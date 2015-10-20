@@ -1,0 +1,32 @@
+{
+    "name": "fruit/routekit",
+    "description": "fast router of fruit framework",
+    "authors": [
+        {
+            "name": "Ronmi Ren",
+            "email": "ronmi@patrolavia.com"
+        }
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "4.0.*",
+        "squizlabs/php_codesniffer": "*",
+	"phploc/phploc": "*",
+	"pdepend/pdepend": "*",
+	"phpmd/phpmd": "*",
+	"sebastian/phpcpd": "*",
+	"corneltek/pux": "1.6.1",
+	"fruit/pathkit": "@dev",
+	"fruit/benchkit": "@dev"
+    },
+    "require": {
+	"alom/graphviz": "~1"
+    },
+    "suggest": {
+    },
+    "autoload": {
+        "psr-4": {
+            "Fruit\\RouteKit\\": "src",
+	    "FruitTest\\RouteKit\\": "test"
+        }
+    }
+}
