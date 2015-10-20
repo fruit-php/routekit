@@ -33,6 +33,9 @@ $mux->get('/foo/:1/baz/:2', array('FOO', 'BAZ'));
 // you cannot use closure as handler
 // $mux->get('/', function(){});    // wrong!
 
+// but you can use object if it can be serialized with var_export()
+$mux->get('/', array(new FOO, 'BAR'));
+
 // dispatch request
 $mux->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['PATH_INFO']);
 

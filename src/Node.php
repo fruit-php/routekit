@@ -74,6 +74,9 @@ class Node
                 }
                 $arg_str = implode(', ', $tmp);
             }
+            if (is_object($h[0])) {
+                $h[0] = var_export($h[0], true);
+            }
             return sprintf('(new %s(%s))->%s(%s)', $h[0], $arg_str, $h[1], $param_str);
         }
 
