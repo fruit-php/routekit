@@ -162,8 +162,6 @@ class Mux implements Router
         $disp = array();
         $in1 = $indent;
         $in2 = $in1 . $in1;
-        $in3 = $in2 . $in1;
-        $in4 = $in3 . $in1;
         $stateMap = array();
         $varMap = array();
         $funcMap = array();
@@ -215,7 +213,7 @@ class Mux implements Router
             $disp[] = "}";
         }
 
-        $ret = '<' . "?php\n\n";
+        $ret = "<?php\n";
         $gen->addPrivateProperty('stateMap', $stateMap);
         $gen->addPrivateProperty('varMap', $varMap);
         $gen->addPrivateProperty('funcMap', $funcMap);
@@ -230,4 +228,27 @@ class Mux implements Router
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $f);
         return $ret . $gen->render() . "return new $clsName;\n";
     }
+
+    public function minimize($clsName = '')
+    {
+        $keywords = array(
+            'if', 'else', '{', '}', '(', ')', '=>', 'array', ';', 'array', ',', '.', '=='
+        );
+        $str = $this->compile($clsName);
+        $str = preg_replace('/\s+/', ' ', $str);
+        while (strpos($str, '  ') > 0) {
+            $str = str_replace('  ', ' ', $str);
+        }
+        $str = str_replace('; ', ';', $str);
+        $str = str_replace('{ ', '{', $str);
+        $str = str_replace('} ', '}', $str);
+        $str = str_replace('( ', '(', $str);
+        $str = str_replace(') ', ')', $str);
+        foreach ($keywords as $key) {
+            $str = str_replace($key . ' ', $key, $str);
+            $str = str_replace(' ' . $key, $key, $str);
+        }
+        return $str;
+    }
+
 }
