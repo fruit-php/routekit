@@ -16,11 +16,12 @@
 	"sebastian/phpcpd": "*",
 	"corneltek/pux": "1.6.1",
 	"fruit/pathkit": "@dev",
-	"fruit/benchkit": "@dev"
+	"fruit/benchkit": "@dev",
+        "lox/xhprof": "dev-master"
     },
     "require": {
 	"alom/graphviz": "~1",
-        "lox/xhprof": "dev-master"
+	"corneltek/codegen": "~2"
     },
     "suggest": {
     },

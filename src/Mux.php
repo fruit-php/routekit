@@ -3,6 +3,7 @@
 namespace Fruit\RouteKit;
 
 use Alom\Graphviz\Digraph;
+use CodeGen\UserClass;
 
 /**
  * Mux is where you place routing rules and dispatch request according to these rules.
@@ -151,13 +152,18 @@ class Mux implements Router
     public function compile($clsName = '', $indent = '')
     {
         if ($clsName == '') {
-            $clsName = 'FruitRouteKitGeneratedMux';
+            $clsName = 'Fruit\RouteKit\GeneratedMux';
         }
+
+        $gen = new UserClass($clsName);
+        $gen->implementInterface('Fruit\RouteKit\Router');
+
         $funcs = array();
         $disp = array();
-        $ind = $indent . $indent;
-        $in3 = $ind . $indent;
-        $in4 = $in3 . $indent;
+        $in1 = $indent;
+        $in2 = $in1 . $in1;
+        $in3 = $in2 . $in1;
+        $in4 = $in3 . $in1;
         $stateMap = array();
         $varMap = array();
         $funcMap = array();
@@ -171,68 +177,57 @@ class Mux implements Router
             // make handlers
             foreach ($funcMap[$m] as $id => $body) {
                 $fn = sprintf('handler_%s_%d', $m, $id);
-                $handlerFuncs[] = sprintf(
-                    'private function %s(array $params){return %s;}' . "\n",
-                    $fn,
-                    $body
-                );
+                $gen->addMethod('private', $fn, array('$params'), array('return ' . $body . ';'));
                 $funcMap[$m][$id] = $fn;
             }
+            $method = var_export($m, true);
 
             // make dispatcher
-            $f = $indent . sprintf('private function dispatch%s($uri)', strtoupper($m)) . "\n";
-            $f .= $indent . "{\n";
-            $f .= $ind . '$arr = explode(\'/\', $uri);' . "\n";
-            $f .= $ind . '$arr[] = \'\';' . "\n";
-            $f .= $ind . '$state = 0;' . "\n";
-            $f .= $ind . '$params = array();' . "\n";
-            $f .= $ind . '$sz = count($arr);' . "\n";
-            $f .= $ind . 'for ($i = 1; $i < $sz; $i++) {' . "\n";
-            $f .= $in3 . '$part = $arr[$i];' . "\n";
-            $f .= $in3 . 'if (isset($this->stateMap[' . var_export($m, true) . '][$state][$part])) ' .
-                '{$state = $this->stateMap[' . var_export($m, true) .
-                '][$state][$part]; continue;}' . "\n";
-            $f .= $in3 . 'if ($i+1 == $sz and isset($this->funcMap[' . var_export($m, true) .
-                '][$state])) {' . "\n";
-            $f .= $in4 . '$f = $this->funcMap[' . var_export($m, true) . '][$state];' . "\n";
-            $f .= $in4 . 'return $this->$f($params);' . "\n";
-            $f .= $in3 . "}\n";
-            $f .= $in3 . 'if (isset($this->varMap[' . var_export($m, true) . '][$state])) ' .
-                '{$state = $this->varMap[' . var_export($m, true) .
-                '][$state]; $params[] = $part; continue;}' . "\n";
-            $f .= $in3 . 'throw new \Exception("no matching rule for url [" . $uri . "]");' . "\n";
-            $f .= $ind . "}\n";
-            $f .= $ind . 'throw new \Exception(\'No matching rule for \' . $uri);' . "\n";
-            $f .= $indent . "}\n";
-            $funcs[$m] = $f;
-            $disp[] = sprintf('if ($method == %s) {', var_export($m, true));
-            $disp[] = sprintf($indent . 'return $this->dispatch%s($uri);', strtoupper($m));
+            $fn = 'dispatch' . strtoupper($m);
+            $f = array();
+            $f[] = '$arr = explode(\'/\', $uri);';
+            $f[] = '$arr[] = \'\';';
+            $f[] = '$state = 0;';
+            $f[] = '$params = array();';
+            $f[] = '$sz = count($arr);';
+            $f[] = 'for ($i = 1; $i < $sz; $i++) {';
+            $f[] = $in1 . '$part = $arr[$i];';
+            $f[] = $in1 . 'if (isset($this->stateMap[' . $method . '][$state][$part])) ' . '{';
+            $f[] = $in2 . '$state = $this->stateMap[' . $method . '][$state][$part];';
+            $f[] = $in2 . 'continue;';
+            $f[] = $in1 . '}';
+            $f[] = $in1 . 'if ($i+1 == $sz and isset($this->funcMap[' . $method . '][$state])) {';
+            $f[] = $in2 . '$f = $this->funcMap[' . $method . '][$state];';
+            $f[] = $in2 . 'return $this->$f($params);';
+            $f[] = $in1 . "}";
+            $f[] = $in1 . 'if (isset($this->varMap[' . $method . '][$state])) ' . '{';
+            $f[] = $in2 . '$state = $this->varMap[' . $method . '][$state];';
+            $f[] = $in2 . '$params[] = $part;';
+            $f[] = $in2 . 'continue;';
+            $f[] = $in1 . '}';
+            $f[] = $in1 . 'throw new \Exception("no matching rule for url [" . $uri . "]");';
+            $f[] = "}";
+            $f[] = 'throw new \Exception(\'No matching rule for \' . $uri);';
+
+            $gen->addMethod('private', $fn, array('$uri'), $f);
+            $disp[] = sprintf('if ($method == %s) {', $method);
+            $disp[] = sprintf($in1 . 'return $this->dispatch%s($uri);', strtoupper($m));
             $disp[] = "}";
         }
 
         $ret = '<' . "?php\n\n";
-        $ret .= 'class ' . $clsName . ' implements Fruit\RouteKit\Router' . "\n";
-        $ret .= "{\n";
-        $ret .= $indent . 'private $stateMap;' . "\n\n";
-        $ret .= $indent . 'private $varMap;' . "\n\n";
-        $ret .= $indent . 'private $funcMap;' . "\n\n";
-        $ret .= $indent . "public function __construct()\n";
-        $ret .= $indent . "{\n";
-        $ret .= $ind . '$this->stateMap = ' . var_export($stateMap, true) . ";\n";
-        $ret .= $ind . '$this->varMap = ' . var_export($varMap, true) . ";\n";
-        $ret .= $ind . '$this->funcMap = ' . var_export($funcMap, true) . ";\n";
-        $ret .= $indent . "}\n\n";
+        $gen->addPrivateProperty('stateMap', $stateMap);
+        $gen->addPrivateProperty('varMap', $varMap);
+        $gen->addPrivateProperty('funcMap', $funcMap);
 
         foreach ($funcs as $f) {
             $ret .= $f . "\n";
         }
-        $ret .= $indent . 'public function dispatch($method, $uri)' . "\n";
-        $ret .= $indent . "{\n";
-        $ret .= $ind . '$method = strtolower($method);' . "\n";
-        $ret .= $ind . implode("\n" . $ind, $disp) . "\n";
-        $ret .= $indent . "}\n";
-        $ret .= $indent . implode("\n" . $indent, $handlerFuncs) . "\n";
-        $ret .= "}\n\nreturn new $clsName;";
-        return $ret;
+
+        $f = array();
+        $f[] = '$method = strtolower($method);';
+        $f = array_merge($f, $disp);
+        $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $f);
+        return $ret . $gen->render() . "return new $clsName;\n";
     }
 }
