@@ -20,7 +20,7 @@ $mux->get('/', 'Foo::Bar');
 $mux->get('/', 'foobar');
 $mux->get('/', foobar);
 // create handler/controller instance with constructor arguments.
-$mux->get('/foo', array('MyClass', 'myMethod'), array('args, 'of', 'constructor'));
+$mux->get('/foo', array('MyClass', 'myMethod'), array('args', 'of', 'constructor'));
 
 class FOO {
     public function BAR($arg1, $arg2){}
