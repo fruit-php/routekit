@@ -164,7 +164,6 @@ class Mux implements Router
         $handlerFuncs = array();
         foreach ($this->roots as $m => $root) {
             $root->fillID(0);
-            $arr = $root->compile();
             $stateMap[$m] = $root->stateTable(array());
             $varMap[$m] = $root->varTable(array());
             $funcMap[$m] = $root->funcTable(array());

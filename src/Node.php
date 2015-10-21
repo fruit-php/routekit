@@ -170,43 +170,4 @@ class Node
         }
         return $tbl;
     }
-
-    public function compile($argc = 0, $path = '')
-    {
-        $name = $path;
-        if ($name == '') {
-            $name = 'root';
-        }
-        $ret = array();
-        if ($this->handler != null) {
-            $ret = array(sprintf('case %d: // %s', $this->id, $name));
-        }
-        $childRet = array();
-        if (count($this->childNodes) > 0) {
-            foreach ($this->childNodes as $k => $node) {
-                $childRet = array_merge($childRet, $node->compile($argc, $path . '/' . $k));
-            }
-        }
-
-        if ($this->handler != null) {
-            $params = array();
-            for ($i = 0; $i < $argc; $i++) {
-                $params[$i] = '$params[' . $i . ']';
-            }
-            $ret[] = '    if ($i+1 == $sz) return ' . $this->exportHandler($params, true) . ';';
-            if ($this->varChild == null) {
-                $ret[] = '    throw new \Exception("no matching rule for url [" . $uri . "]");';
-            } else {
-                $ret[] = sprintf('    $state = %d;', $this->varChild->id);
-                $ret[] = '    $params[] = $part;';
-                $ret[] = '    break;';
-            }
-        }
-        if ($this->varChild != null) {
-            $argc++;
-            $childRet = array_merge($childRet, $this->varChild->compile($argc, $path . '/[variable]'));
-        }
-
-        return array_merge($ret, $childRet);
-    }
 }
