@@ -160,33 +160,50 @@ class Mux implements Router
         $in4 = $in3 . $indent;
         $stateMap = array();
         $varMap = array();
+        $funcMap = array();
+        $handlerFuncs = array();
         foreach ($this->roots as $m => $root) {
             $root->fillID(0);
             $arr = $root->compile();
             $stateMap[$m] = $root->stateTable(array());
             $varMap[$m] = $root->varTable(array());
+            $funcMap[$m] = $root->funcTable(array());
 
+            // make handlers
+            foreach ($funcMap[$m] as $id => $body) {
+                $fn = sprintf('handler_%s_%d', $m, $id);
+                $handlerFuncs[] = sprintf(
+                    'private function %s(array $params){return %s;}' . "\n",
+                    $fn,
+                    $body
+                );
+                $funcMap[$m][$id] = $fn;
+            }
+
+            // make dispatcher
             $f = $indent . sprintf('private function dispatch%s($uri)', strtoupper($m)) . "\n";
             $f .= $indent . "{\n";
             $f .= $ind . '$arr = explode(\'/\', $uri);' . "\n";
             $f .= $ind . '$arr[] = \'\';' . "\n";
             $f .= $ind . '$state = 0;' . "\n";
+            $f .= $ind . '$params = array();' . "\n";
             $f .= $ind . '$sz = count($arr);' . "\n";
             $f .= $ind . 'for ($i = 1; $i < $sz; $i++) {' . "\n";
             $f .= $in3 . '$part = $arr[$i];' . "\n";
             $f .= $in3 . 'if (isset($this->stateMap[' . var_export($m, true) . '][$state][$part])) ' .
                 '{$state = $this->stateMap[' . var_export($m, true) .
                 '][$state][$part]; continue;}' . "\n";
+            $f .= $in3 . 'if ($i+1 == $sz and isset($this->funcMap[' . var_export($m, true) .
+                '][$state])) {' . "\n";
+            $f .= $in4 . '$f = $this->funcMap[' . var_export($m, true) . '][$state];' . "\n";
+            $f .= $in4 . 'return $this->$f($params);' . "\n";
+            $f .= $in3 . "}\n";
             $f .= $in3 . 'if (isset($this->varMap[' . var_export($m, true) . '][$state])) ' .
                 '{$state = $this->varMap[' . var_export($m, true) .
                 '][$state]; $params[] = $part; continue;}' . "\n";
-            $f .= $in3 . 'switch ($state) {' . "\n";
-            $f .= $in3 . implode("\n" . $in3, $arr) . "\n";
-            $f .= $in3 . "default:\n";
-            $f .= $in4 . 'throw new \Exception("no matching rule for url [" . $uri . "]");' . "\n";
-            $f .= $in3 . "}\n";
+            $f .= $in3 . 'throw new \Exception("no matching rule for url [" . $uri . "]");' . "\n";
             $f .= $ind . "}\n";
-            $f .= $ind . 'throw new Exception(\'No matching rule for \' . $uri);' . "\n";
+            $f .= $ind . 'throw new \Exception(\'No matching rule for \' . $uri);' . "\n";
             $f .= $indent . "}\n";
             $funcs[$m] = $f;
             $disp[] = sprintf('if ($method == %s) {', var_export($m, true));
@@ -199,10 +216,12 @@ class Mux implements Router
         $ret .= "{\n";
         $ret .= $indent . 'private $stateMap;' . "\n\n";
         $ret .= $indent . 'private $varMap;' . "\n\n";
+        $ret .= $indent . 'private $funcMap;' . "\n\n";
         $ret .= $indent . "public function __construct()\n";
         $ret .= $indent . "{\n";
         $ret .= $ind . '$this->stateMap = ' . var_export($stateMap, true) . ";\n";
         $ret .= $ind . '$this->varMap = ' . var_export($varMap, true) . ";\n";
+        $ret .= $ind . '$this->funcMap = ' . var_export($funcMap, true) . ";\n";
         $ret .= $indent . "}\n\n";
 
         foreach ($funcs as $f) {
@@ -213,6 +232,7 @@ class Mux implements Router
         $ret .= $ind . '$method = strtolower($method);' . "\n";
         $ret .= $ind . implode("\n" . $ind, $disp) . "\n";
         $ret .= $indent . "}\n";
+        $ret .= $indent . implode("\n" . $indent, $handlerFuncs) . "\n";
         $ret .= "}\n\nreturn new $clsName;";
         return $ret;
     }

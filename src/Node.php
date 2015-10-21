@@ -151,6 +151,26 @@ class Node
         }
         return $tbl;
     }
+
+    public function funcTable(array $tbl, $argc = 0)
+    {
+        foreach ($this->childNodes as $v) {
+            $tbl = $v->funcTable($tbl, $argc);
+        }
+        if ($this->varChild != null) {
+            $argc++;
+            $tbl = $this->varChild->funcTable($tbl, $argc);
+        }
+        if ($this->handler != null) {
+            $params = array();
+            for ($i = 0; $i < $argc; $i++) {
+                $params[$i] = '$params[' . $i . ']';
+            }
+            $tbl[$this->id] = $this->exportHandler($params, true);
+        }
+        return $tbl;
+    }
+
     public function compile($argc = 0, $path = '')
     {
         $name = $path;
