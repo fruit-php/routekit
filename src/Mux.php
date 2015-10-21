@@ -159,22 +159,27 @@ class Mux implements Router
         $in3 = $ind . $indent;
         $in4 = $in3 . $indent;
         $stateMap = array();
+        $varMap = array();
         foreach ($this->roots as $m => $root) {
             $root->fillID(0);
             $arr = $root->compile();
             $stateMap[$m] = $root->stateTable(array());
+            $varMap[$m] = $root->varTable(array());
 
             $f = $indent . sprintf('private function dispatch%s($uri)', strtoupper($m)) . "\n";
             $f .= $indent . "{\n";
-            $f .= $ind . '$method = ' . var_export($m, true) . ";\n";
             $f .= $ind . '$arr = explode(\'/\', $uri);' . "\n";
             $f .= $ind . '$arr[] = \'\';' . "\n";
             $f .= $ind . '$state = 0;' . "\n";
             $f .= $ind . '$sz = count($arr);' . "\n";
             $f .= $ind . 'for ($i = 1; $i < $sz; $i++) {' . "\n";
             $f .= $in3 . '$part = $arr[$i];' . "\n";
-            $f .= $in3 . 'if (isset($this->stateMap[$method][$state][$part])) ' .
-                '{$state = $this->stateMap[$method][$state][$part]; continue;}' . "\n";
+            $f .= $in3 . 'if (isset($this->stateMap[' . var_export($m, true) . '][$state][$part])) ' .
+                '{$state = $this->stateMap[' . var_export($m, true) .
+                '][$state][$part]; continue;}' . "\n";
+            $f .= $in3 . 'if (isset($this->varMap[' . var_export($m, true) . '][$state])) ' .
+                '{$state = $this->varMap[' . var_export($m, true) .
+                '][$state]; $params[] = $part; continue;}' . "\n";
             $f .= $in3 . 'switch ($state) {' . "\n";
             $f .= $in3 . implode("\n" . $in3, $arr) . "\n";
             $f .= $in3 . "default:\n";
@@ -193,9 +198,11 @@ class Mux implements Router
         $ret .= 'class ' . $clsName . ' implements Fruit\RouteKit\Router' . "\n";
         $ret .= "{\n";
         $ret .= $indent . 'private $stateMap;' . "\n\n";
+        $ret .= $indent . 'private $varMap;' . "\n\n";
         $ret .= $indent . "public function __construct()\n";
         $ret .= $indent . "{\n";
         $ret .= $ind . '$this->stateMap = ' . var_export($stateMap, true) . ";\n";
+        $ret .= $ind . '$this->varMap = ' . var_export($varMap, true) . ";\n";
         $ret .= $indent . "}\n\n";
 
         foreach ($funcs as $f) {

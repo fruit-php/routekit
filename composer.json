@@ -19,7 +19,8 @@
 	"fruit/benchkit": "@dev"
     },
     "require": {
-	"alom/graphviz": "~1"
+	"alom/graphviz": "~1",
+        "lox/xhprof": "dev-master"
     },
     "suggest": {
     },

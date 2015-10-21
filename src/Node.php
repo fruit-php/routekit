@@ -138,6 +138,19 @@ class Node
         return $tbl;
     }
 
+    public function varTable(array $tbl)
+    {
+        foreach ($this->childNodes as $v) {
+            $tbl = $v->varTable($tbl);
+        }
+        if ($this->varChild != null) {
+            $tbl = $this->varChild->varTable($tbl);
+            if ($this->handler == null) {
+                $tbl[$this->id] = $this->varChild->id;
+            }
+        }
+        return $tbl;
+    }
     public function compile($argc = 0, $path = '')
     {
         $name = $path;
@@ -145,7 +158,7 @@ class Node
             $name = 'root';
         }
         $ret = array();
-        if ($this->varChild != null or $this->handler != null) {
+        if ($this->handler != null) {
             $ret = array(sprintf('case %d: // %s', $this->id, $name));
         }
         $childRet = array();
@@ -163,13 +176,14 @@ class Node
             $ret[] = '    if ($i+1 == $sz) return ' . $this->exportHandler($params, true) . ';';
             if ($this->varChild == null) {
                 $ret[] = '    throw new \Exception("no matching rule for url [" . $uri . "]");';
+            } else {
+                $ret[] = sprintf('    $state = %d;', $this->varChild->id);
+                $ret[] = '    $params[] = $part;';
+                $ret[] = '    break;';
             }
         }
         if ($this->varChild != null) {
             $argc++;
-            $ret[] = sprintf('    $state = %d;', $this->varChild->id);
-            $ret[] = '    $params[] = $part;';
-            $ret[] = '    break;';
             $childRet = array_merge($childRet, $this->varChild->compile($argc, $path . '/[variable]'));
         }
 
