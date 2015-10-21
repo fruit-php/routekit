@@ -38,10 +38,8 @@ class Node
     public function match($path)
     {
         // match for static first
-        foreach ($this->childNodes as $k => $node) {
-            if ($path == $k) {
-                return array($node, null);
-            }
+        if (isset($this->childNodes[$path])) {
+            return array($this->childNodes[$path], null);
         }
 
         // no match, return variable handler (or null)

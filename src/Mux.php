@@ -33,8 +33,9 @@ class Mux implements Router
         $arr = explode('/', $url);
         array_shift($arr);
         $params = array();
-        while (count($arr) > 0) {
-            list($cur, $param) = $cur->match(array_shift($arr));
+        $arr_size = count($arr);
+        for ($i = 0; $i < $arr_size; $i++) {
+            list($cur, $param) = $cur->match($arr[$i]);
             if ($cur == null) {
                 throw new \Exception('No Matching handler for ' . $url);
             }
@@ -49,12 +50,14 @@ class Mux implements Router
         list($cb, $args) = $cur->handler;
 
         if (is_array($cb)) {
-            $ref = new \ReflectionClass($cb[0]);
-            $obj = null;
-            if (is_array($args) and count($args) > 0) {
-                $obj = $ref->newInstanceArgs($args);
-            } else {
-                $obj = $ref->newInstance();
+            $obj = $cb[0];
+            if (! is_object($obj)) {
+                $ref = new \ReflectionClass($cb[0]);
+                if (is_array($args) and count($args) > 0) {
+                    $obj = $ref->newInstanceArgs($args);
+                } else {
+                    $obj = $ref->newInstance();
+                }
             }
             $cb[0] = $obj;
         }
