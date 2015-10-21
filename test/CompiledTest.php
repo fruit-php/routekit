@@ -21,9 +21,7 @@ class CompiledTest extends \PHPUnit_Framework_TestCase
             $mux->get('/params/:/2/:', array($cls, 'params'));
 
             $mux->get('/init', array($cls, 'constructArgs'), array(1, 2));
-            $fn = tempnam(sys_get_temp_dir(), 'FOO');
             $str = $mux->compile('MyRoute', '    ');
-            file_put_contents('/tmp/a.php', $str);
             eval(substr($str, 5));
         }
 
