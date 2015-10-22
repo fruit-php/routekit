@@ -149,7 +149,7 @@ class Mux implements Router
      * @param $clsName string custom class name, default to 'FruitRouteKitGeneratedMux'.
      * @param $indent string how you indent generated class.
      */
-    public function compile($clsName = '', $indent = '')
+    public function compile($clsName = '', $indent = '    ')
     {
         if ($clsName == '') {
             $clsName = 'Fruit\RouteKit\GeneratedMux';
@@ -180,37 +180,6 @@ class Mux implements Router
             }
             $method = var_export($m, true);
 
-            // make dispatcher
-            $fn = 'dispatch' . strtoupper($m);
-            $f = array();
-            $f[] = '$arr = explode(\'/\', $uri);';
-            $f[] = '$arr[] = \'\';';
-            $f[] = '$state = 0;';
-            $f[] = '$params = array();';
-            $f[] = '$sz = count($arr);';
-            $f[] = 'for ($i = 1; $i < $sz; $i++) {';
-            $f[] = $in1 . '$part = $arr[$i];';
-            $f[] = $in1 . 'if (isset($this->stateMap[' . $method . '][$state][$part])) ' . '{';
-            $f[] = $in2 . '$state = $this->stateMap[' . $method . '][$state][$part];';
-            $f[] = $in2 . 'continue;';
-            $f[] = $in1 . '}';
-            $f[] = $in1 . 'if ($i+1 == $sz and isset($this->funcMap[' . $method . '][$state])) {';
-            $f[] = $in2 . '$f = $this->funcMap[' . $method . '][$state];';
-            $f[] = $in2 . 'return $this->$f($params);';
-            $f[] = $in1 . "}";
-            $f[] = $in1 . 'if (isset($this->varMap[' . $method . '][$state])) ' . '{';
-            $f[] = $in2 . '$state = $this->varMap[' . $method . '][$state];';
-            $f[] = $in2 . '$params[] = $part;';
-            $f[] = $in2 . 'continue;';
-            $f[] = $in1 . '}';
-            $f[] = $in1 . 'throw new \Exception("no matching rule for url [" . $uri . "]");';
-            $f[] = "}";
-            $f[] = 'throw new \Exception(\'No matching rule for \' . $uri);';
-
-            $gen->addMethod('private', $fn, array('$uri'), $f);
-            $disp[] = sprintf('if ($method == %s) {', $method);
-            $disp[] = sprintf($in1 . 'return $this->dispatch%s($uri);', strtoupper($m));
-            $disp[] = "}";
         }
 
         $ret = "<?php\n";
@@ -222,9 +191,35 @@ class Mux implements Router
             $ret .= $f . "\n";
         }
 
+        // make dispatcher
         $f = array();
         $f[] = '$method = strtolower($method);';
-        $f = array_merge($f, $disp);
+        $f[] = 'if (!isset($this->stateMap[$method])) {';
+        $f[] = '    throw new \Exception(\'unsupported method \' . $method);';
+        $f[] = '}';
+        $f[] = '$arr = explode(\'/\', $uri);';
+        $f[] = '$arr[] = \'\';';
+        $f[] = '$state = 0;';
+        $f[] = '$params = array();';
+        $f[] = '$sz = count($arr);';
+        $f[] = 'for ($i = 1; $i < $sz; $i++) {';
+        $f[] = $in1 . '$part = $arr[$i];';
+        $f[] = $in1 . 'if (isset($this->stateMap[$method][$state][$part])) ' . '{';
+        $f[] = $in2 . '$state = $this->stateMap[$method][$state][$part];';
+        $f[] = $in2 . 'continue;';
+        $f[] = $in1 . '}';
+        $f[] = $in1 . 'if ($i+1 == $sz and isset($this->funcMap[$method][$state])) {';
+        $f[] = $in2 . '$f = $this->funcMap[$method][$state];';
+        $f[] = $in2 . 'return $this->$f($params);';
+        $f[] = $in1 . "}";
+        $f[] = $in1 . 'if (isset($this->varMap[$method][$state])) ' . '{';
+        $f[] = $in2 . '$state = $this->varMap[$method][$state];';
+        $f[] = $in2 . '$params[] = $part;';
+        $f[] = $in2 . 'continue;';
+        $f[] = $in1 . '}';
+        $f[] = $in1 . 'throw new \Exception("no matching rule for url [" . $uri . "]");';
+        $f[] = "}";
+        $f[] = 'throw new \Exception(\'No matching rule for \' . $uri);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $f);
         return $ret . $gen->render() . "return new $clsName;\n";
     }
