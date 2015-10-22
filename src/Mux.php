@@ -140,16 +140,7 @@ class Mux implements Router
         return $ret;
     }
 
-    /**
-     * Generate static router, convert every dynamic call to handler/controller to static call.
-     *
-     * This method will generate the defination of a customed class, which implements
-     * Fruit\RouteKit\Router, so you can create an instance and use the dispatch() method.
-     *
-     * @param $clsName string custom class name, default to 'FruitRouteKitGeneratedMux'.
-     * @param $indent string how you indent generated class.
-     */
-    public function compile($clsName = '', $indent = '    ')
+    private function doCompile($clsName = '', $indent = '    ')
     {
         if ($clsName == '') {
             $clsName = 'Fruit\RouteKit\GeneratedMux';
@@ -182,14 +173,9 @@ class Mux implements Router
 
         }
 
-        $ret = "<?php\n";
         $gen->addPrivateProperty('stateMap', $stateMap);
         $gen->addPrivateProperty('varMap', $varMap);
         $gen->addPrivateProperty('funcMap', $funcMap);
-
-        foreach ($funcs as $f) {
-            $ret .= $f . "\n";
-        }
 
         // make dispatcher
         $f = array();
@@ -221,29 +207,21 @@ class Mux implements Router
         $f[] = "}";
         $f[] = 'throw new \Exception(\'No matching rule for \' . $uri);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $f);
-        return $ret . $gen->render() . "return new $clsName;\n";
+        return $gen;
     }
 
-    public function minimize($clsName = '')
+    /**
+     * Generate static router, convert every dynamic call to handler/controller to static call.
+     *
+     * This method will generate the defination of a customed class, which implements
+     * Fruit\RouteKit\Router, so you can create an instance and use the dispatch() method.
+     *
+     * @param $clsName string custom class name, default to 'FruitRouteKitGeneratedMux'.
+     * @param $indent string how you indent generated class.
+     */
+    public function compile($clsName = '', $indent = '    ')
     {
-        $keywords = array(
-            'if', 'else', '{', '}', '(', ')', '=>', 'array', ';', 'array', ',', '.', '=='
-        );
-        $str = $this->compile($clsName);
-        $str = preg_replace('/\s+/', ' ', $str);
-        while (strpos($str, '  ') > 0) {
-            $str = str_replace('  ', ' ', $str);
-        }
-        $str = str_replace('; ', ';', $str);
-        $str = str_replace('{ ', '{', $str);
-        $str = str_replace('} ', '}', $str);
-        $str = str_replace('( ', '(', $str);
-        $str = str_replace(') ', ')', $str);
-        foreach ($keywords as $key) {
-            $str = str_replace($key . ' ', $key, $str);
-            $str = str_replace(' ' . $key, $key, $str);
-        }
-        return $str;
+        $gen = $this->doCompile($clsName, $indent);
+        return "<?php\n" . $gen->render() . "return new $clsName;\n";
     }
-
 }

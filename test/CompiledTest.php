@@ -21,7 +21,8 @@ class CompiledTest extends \PHPUnit_Framework_TestCase
             $mux->get('/params/:/2/:', array($cls, 'params'));
 
             $mux->get('/init', array($cls, 'constructArgs'), array(1, 2));
-            $str = $mux->minimize('MyRoute');
+            $mux->get('/min', array($cls, 'constructArgs'), array("a b", "if else switch"));
+            $str = $mux->compile('MyRoute');
             eval(substr($str, 5));
         }
 
