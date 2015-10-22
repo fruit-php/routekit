@@ -7,11 +7,11 @@
 
 var indexSectionsWithContent =
 {
-  0: "$_acdefgmnoprs",
+  0: "$_acdefgmnoprsv",
   1: "mnr",
   2: "f",
   3: "mnr",
-  4: "_acdefgmoprs",
+  4: "_acdefgmoprsv",
   5: "$"
 };
 
