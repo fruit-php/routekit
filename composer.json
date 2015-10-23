@@ -15,8 +15,7 @@
 	"phpmd/phpmd": "*",
 	"sebastian/phpcpd": "*",
 	"corneltek/pux": "1.6.1",
-	"fruit/pathkit": "@dev",
-	"fruit/benchkit": "@dev"
+	"fruit/benchkit": "~1"
     },
     "require": {
 	"alom/graphviz": "~1",
