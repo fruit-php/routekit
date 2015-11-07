@@ -88,7 +88,7 @@ class Mux implements Router
                 $ret[$idx] = $param;
                 break;
             default:
-                throw new Exception(sprintf('The type of %s is %s, which is not supported.', $pRef->getName(), $pType));
+                throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
             }
         }
         return $ret;

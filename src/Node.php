@@ -245,7 +245,7 @@ class Node
                 case 'string':
                     break;
                 default:
-                    throw new Exception(sprintf('The type of %s is %s, which is not supported.', $pRef->getName(), $pType));
+                    throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
                 }
             }
             $func[] = 'return ' . $this->exportHandler($params, true) . ';';
