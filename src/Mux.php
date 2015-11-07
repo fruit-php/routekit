@@ -42,7 +42,7 @@ class Mux implements Router
         $size = count($pRefs);
         $ret = $params;
         $err = function(ReflectionParameter $ref, $type) {
-            throw new Exception(sprintf('Parameter %s is not %s', $ref->getName(), $type));
+            throw new TypeMismatchException($ref->getName(), $type);
         };
         
         foreach ($params as $idx => $param) {
@@ -63,7 +63,7 @@ class Mux implements Router
                     $err($pRef, $pType);
                 }
                 $ret[$idx] = $param + 0;
-                    break;
+                break;
             case 'float':
                 if (!is_numeric($param)) {
                     $err($pRef, $pType);
@@ -252,7 +252,7 @@ class Mux implements Router
             // make handlers
             foreach ($funcMap[$m] as $id => $body) {
                 $fn = sprintf('handler_%s_%d', $m, $id);
-                $gen->addMethod('private', $fn, array('$params'), array('return ' . $body . ';'));
+                $gen->addMethod('private', $fn, array('$params'), $body);
                 $funcMap[$m][$id] = $fn;
             }
             $method = var_export($m, true);

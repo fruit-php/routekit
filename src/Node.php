@@ -213,7 +213,42 @@ class Node
             for ($i = 0; $i < $argc; $i++) {
                 $params[$i] = '$params[' . $i . ']';
             }
-            $tbl[$this->id] = $this->exportHandler($params, true);
+            $func = array();
+            $size = count($this->parameters);
+            foreach ($params as $idx => $param) {
+                if ($idx >= $size) {
+                    break;
+                }
+
+                $pRef = $this->parameters[$idx];
+                if (!$pRef->hasType()) {
+                    continue;
+                }
+
+                $pType = $pRef->getType()->__toString();
+                switch ($pType) {
+                case 'int':
+                    $func[] = sprintf('if (ctype_digit($params[%d])) $params[%d] += 0;', $idx, $idx);
+                    $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true));
+                    break;
+                case 'float':
+                    $func[] = sprintf('if (is_numeric($params[%d])) $params[%d] += 0.0;', $idx, $idx);
+                    $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "float");', var_export($pRef->getName(), true));
+                    break;
+                case 'bool':
+                    $func[] = sprintf('$boolParam = strtolower($params[%d]);', $idx);
+                    $func[] = sprintf('if ($boolParam == "true") $params[%d] = true;', $idx);
+                    $func[] = sprintf('elseif ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
+                    $func[] = sprintf('else $params[%d] = $params[%d] == true;', idx, idx);
+                    break;
+                case 'string':
+                    break;
+                default:
+                    throw new Exception(sprintf('The type of %s is %s, which is not supported.', $pRef->getName(), $pType));
+                }
+            }
+            $func[] = 'return ' . $this->exportHandler($params, true) . ';';
+            $tbl[$this->id] = $func;
         }
         return $tbl;
     }
