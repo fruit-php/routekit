@@ -46,11 +46,12 @@ class Mux implements Router
                 $params[] = $param;
             }
         }
-        if ($cur->handler == null) {
+        $handler = $cur->getHandler();
+        if ($handler == null) {
             throw new Exception('No Matching handler for ' . $url);
         }
 
-        list($cb, $args) = $cur->handler;
+        list($cb, $args) = $handler;
 
         if (is_array($cb)) {
             $obj = $cb[0];
@@ -86,10 +87,10 @@ class Mux implements Router
             $cur_path = array_shift($arr);
             $cur = $cur->register($cur_path);
         }
-        if ($cur->handler != null) {
+        if ($cur->getHandler() != null) {
             throw new Exception('Already registered a handler for ' . $path);
         }
-        $cur->handler = array($handler, $constructorArgs);
+        $cur->setHandler(array($handler, $constructorArgs));
         return $this;
     }
 

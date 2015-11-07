@@ -3,18 +3,65 @@
 namespace Fruit\RouteKit;
 
 use Alom\Graphviz\Digraph;
+use ReflectionClass;
+use ReflectionFunction;
+use ReflectionParameter;
 
 // This class is only for internal use.
 class Node
 {
-    public $handler;
+    private $handler;
+    private $parameters;
     private $childNodes;
     private $varChild;
     private $id;
 
+    /**
+     * Get parameter definition from handler.
+     */
+    public static function getParamReflections($handler)
+    {
+        if (!is_callable($handler, true, $callName)) {
+            throw new Exception("Handler is not callable");
+        }
+
+        if ($callName == 'Closure::__invoke' or strpos($callName, '::') < 0) {
+            // functions, will throw exception if function not exist
+            $ref = new ReflectionFunction($handler);
+            return $ref->getParameters();
+        }
+
+        if (!is_array($handler)) {
+            // Class::StaticMethod form, just convert it to array form
+            $handler = explode('::', $handler);
+        }
+
+        
+        // [class or object, method] form, throw exception if class not exist or method not found
+        $ref = new ReflectionClass($handler[0]);
+        $method = $ref->getMethod($handler[1]);
+        return $method->getParameters();
+    }
+    
     public function __construct()
     {
         $this->childNodes = array();
+    }
+
+    public function setHandler(array $handler)
+    {
+        $this->handler = $handler;
+        $this->parameters = self::getParamReflections($handler[0]);
+    }
+
+    public function getHandler()
+    {
+        return $this->handler;
+    }
+
+    public function getParameters()
+    {
+        return $this->parameters;
     }
 
     /**
