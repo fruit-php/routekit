@@ -4,6 +4,8 @@ namespace Fruit\RouteKit;
 
 use Alom\Graphviz\Digraph;
 use CodeGen\UserClass;
+use Exception;
+use ReflectionClass;
 
 /**
  * Mux is where you place routing rules and dispatch request according to these rules.
@@ -28,7 +30,7 @@ class Mux implements Router
     {
         $method = strtolower($method);
         if (! isset($this->roots[$method])) {
-            throw new \Exception('No matching method of ' . $method);
+            throw new Exception('No matching method of ' . $method);
         }
         $cur = $this->roots[$method];
         $arr = explode('/', $url);
@@ -38,14 +40,14 @@ class Mux implements Router
         for ($i = 0; $i < $arr_size; $i++) {
             list($cur, $param) = $cur->match($arr[$i]);
             if ($cur == null) {
-                throw new \Exception('No Matching handler for ' . $url);
+                throw new Exception('No Matching handler for ' . $url);
             }
             if ($param != null) {
                 $params[] = $param;
             }
         }
         if ($cur->handler == null) {
-            throw new \Exception('No Matching handler for ' . $url);
+            throw new Exception('No Matching handler for ' . $url);
         }
 
         list($cb, $args) = $cur->handler;
@@ -53,7 +55,7 @@ class Mux implements Router
         if (is_array($cb)) {
             $obj = $cb[0];
             if (! is_object($obj)) {
-                $ref = new \ReflectionClass($cb[0]);
+                $ref = new ReflectionClass($cb[0]);
                 if (is_array($args) and count($args) > 0) {
                     $obj = $ref->newInstanceArgs($args);
                 } else {
@@ -85,7 +87,7 @@ class Mux implements Router
             $cur = $cur->register($cur_path);
         }
         if ($cur->handler != null) {
-            throw new \Exception('Already registered a handler for ' . $path);
+            throw new Exception('Already registered a handler for ' . $path);
         }
         $cur->handler = array($handler, $constructorArgs);
         return $this;
@@ -181,7 +183,7 @@ class Mux implements Router
         $f = array();
         $f[] = '$method = strtolower($method);';
         $f[] = 'if (!isset($this->stateMap[$method])) {';
-        $f[] = '    throw new \Exception(\'unsupported method \' . $method);';
+        $f[] = '    throw new Exception(\'unsupported method \' . $method);';
         $f[] = '}';
         $f[] = '$arr = explode(\'/\', $uri);';
         $f[] = '$arr[] = \'\';';
@@ -203,9 +205,9 @@ class Mux implements Router
         $f[] = $in2 . '$params[] = $part;';
         $f[] = $in2 . 'continue;';
         $f[] = $in1 . '}';
-        $f[] = $in1 . 'throw new \Exception("no matching rule for url [" . $uri . "]");';
+        $f[] = $in1 . 'throw new Exception("no matching rule for url [" . $uri . "]");';
         $f[] = "}";
-        $f[] = 'throw new \Exception(\'No matching rule for \' . $uri);';
+        $f[] = 'throw new Exception(\'No matching rule for \' . $uri);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $f);
         return $gen;
     }
