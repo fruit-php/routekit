@@ -56,7 +56,7 @@ RouteKit gains performance in two ways: better data structure for rule-matching,
 
 RouteKit store routing rules in tree structure, so the matching speed will not be affected by how many rules you have. In other words, the matching process has constant time complexity.
 
-More further, in generated custom router class, we use a Finite State Machine to do the matching process, eliminates all possible function calls. Function calls are much slower comparing to opcode actions (`if`, `switch`, assignments, arithmatic operations, etc.) and hashtable manuplating. In practice, the FSM approach can run 2x faster than tree lookup, or more than 20x faster comparing to array implementations.
+More further, in generated custom router class, we use a Finite State Machine to do the matching process, eliminates all possible function calls. Function calls are much slower comparing to opcode actions (`if`, `switch`, assignments, arithmatic operations, etc.) and hashtable manuplating. In practice, the FSM approach can run more than 20x faster comparing to array implementations.
 
 ### Static call
 
@@ -82,6 +82,26 @@ then
 
 ```sh
 dot -Tsvg get.gv > get.svg
+```
+
+## Type converting for PHP7
+
+You can add type hintings to your handler if you are using PHP7, RouteKit will automatically do the type checking and converting for you. Currently we support only `int`, `float`, `bool` and `string` types. We will not check/convert the parameters without type-hinted.
+
+In non-compiled version, this is done by `ReflectionParameter::getType()`, so it would costs some performance.
+
+In compiled version, we grab the type info at compile time, so there is no performance penalty excepts the type checking and converting works.
+
+```php
+function handlerOK(int $i) {}
+function handlerFAIL(array $i) {}
+$mux->get('/ok/:', 'handlerOK');
+$mux->get('/fail/:', 'handlerFAIL');
+
+$mux->dispatch('GET', '/ok/1'); // works
+$mux->dispatch('GET', '/ok/hello'); // throw a Fruit\RouteKit\TypeMismatchException
+$mux->dispatch('GET', '/fail/1'); // throw an Exception with messages telling you array type is not supported
+$mux->compile(); // throw an Exception with messages telling you array type is not supported
 ```
 
 ## License
