@@ -3,18 +3,66 @@
 namespace Fruit\RouteKit;
 
 use Alom\Graphviz\Digraph;
+use Exception;
+use ReflectionClass;
+use ReflectionFunction;
+use ReflectionParameter;
 
 // This class is only for internal use.
 class Node
 {
-    public $handler;
+    private $handler;
+    private $parameters;
     private $childNodes;
     private $varChild;
     private $id;
 
+    /**
+     * Get parameter definition from handler.
+     */
+    public static function getParamReflections($handler)
+    {
+        if (!is_callable($handler, true, $callName)) {
+            throw new Exception("Handler is not callable");
+        }
+
+        if ($callName == 'Closure::__invoke' or strpos($callName, '::') < 0) {
+            // functions, will throw exception if function not exist
+            $ref = new ReflectionFunction($handler);
+            return $ref->getParameters();
+        }
+
+        if (!is_array($handler)) {
+            // Class::StaticMethod form, just convert it to array form
+            $handler = explode('::', $handler);
+        }
+
+        
+        // [class or object, method] form, throw exception if class not exist or method not found
+        $ref = new ReflectionClass($handler[0]);
+        $method = $ref->getMethod($handler[1]);
+        return $method->getParameters();
+    }
+    
     public function __construct()
     {
         $this->childNodes = array();
+    }
+
+    public function setHandler(array $handler)
+    {
+        $this->handler = $handler;
+        $this->parameters = self::getParamReflections($handler[0]);
+    }
+
+    public function getHandler()
+    {
+        return $this->handler;
+    }
+
+    public function getParameters()
+    {
+        return $this->parameters;
     }
 
     /**
@@ -166,7 +214,42 @@ class Node
             for ($i = 0; $i < $argc; $i++) {
                 $params[$i] = '$params[' . $i . ']';
             }
-            $tbl[$this->id] = $this->exportHandler($params, true);
+            $func = array();
+            $size = count($this->parameters);
+            foreach ($params as $idx => $param) {
+                if ($idx >= $size) {
+                    break;
+                }
+
+                $pRef = $this->parameters[$idx];
+                if (!$pRef->hasType()) {
+                    continue;
+                }
+
+                $pType = $pRef->getType()->__toString();
+                switch ($pType) {
+                case 'int':
+                    $func[] = sprintf('if (ctype_digit($params[%d])) $params[%d] += 0;', $idx, $idx);
+                    $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true));
+                    break;
+                case 'float':
+                    $func[] = sprintf('if (is_numeric($params[%d])) $params[%d] += 0.0;', $idx, $idx);
+                    $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "float");', var_export($pRef->getName(), true));
+                    break;
+                case 'bool':
+                    $func[] = sprintf('$boolParam = strtolower($params[%d]);', $idx);
+                    $func[] = sprintf('if ($boolParam == "true") $params[%d] = true;', $idx);
+                    $func[] = sprintf('elseif ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
+                    $func[] = sprintf('else $params[%d] = $params[%d] == true;', idx, idx);
+                    break;
+                case 'string':
+                    break;
+                default:
+                    throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
+                }
+            }
+            $func[] = 'return ' . $this->exportHandler($params, true) . ';';
+            $tbl[$this->id] = $func;
         }
         return $tbl;
     }
