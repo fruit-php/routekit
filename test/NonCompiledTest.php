@@ -50,4 +50,39 @@ class NonCompiledTest extends \PHPUnit_Framework_TestCase
     {
         $this->assertEquals(array(1, 2), $this->M()->dispatch('GET', '/init'));
     }
+
+    /**
+     * @requires PHP 7
+     */
+    public function testParamTypes()
+    {
+        $cls = 'FruitTest\RouteKit\Handler7';
+        $mux = new Mux;
+        $mux->get('/p/:/:/:/:', array($cls, 'params'));
+        $actual = $mux->dispatch('GET', '/p/1/2/3/4.5');
+        $this->assertEquals(array(1, '2', true, 4.5), $actual);
+    }
+
+    public function wrongTypeP()
+    {
+        return array(
+            // /p/int/string/bool/float
+            array('/p/1.5/2/3/4.5'), // not int
+            array('/p/orz/2/3/4.5'), // not int
+            array('/p/1/2/3/orz'), // not float
+        );
+    }
+    
+    /**
+     * @requires PHP 7
+     * @expectedException Exception
+     * @dataProvider wrongTypeP
+     */
+    public function testParamWrongType($uri)
+    {
+        $cls = 'FruitTest\RouteKit\Handler7';
+        $mux = new Mux;
+        $mux->get('/p/:/:/:/:', array($cls, 'params'));
+        $actual = $mux->dispatch('GET', $uri);
+    }
 }
