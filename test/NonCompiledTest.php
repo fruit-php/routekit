@@ -59,8 +59,16 @@ class NonCompiledTest extends \PHPUnit_Framework_TestCase
         $cls = 'FruitTest\RouteKit\Handler7';
         $mux = new Mux;
         $mux->get('/p/:/:/:/:', array($cls, 'params'));
-        $actual = $mux->dispatch('GET', '/p/1/2/3/4.5');
+        $actual = $mux->dispatch('GET', '/p/1/2/true/4.5');
         $this->assertEquals(array(1, '2', true, 4.5), $actual);
+        $actual = $mux->dispatch('GET', '/p/-1/2/1/-4.5');
+        $this->assertEquals(array(-1, '2', true, -4.5), $actual);
+        $actual = $mux->dispatch('GET', '/p/-1/2/false/-4.5');
+        $this->assertEquals(array(-1, '2', false, -4.5), $actual);
+        $actual = $mux->dispatch('GET', '/p/-1/2/null/-4.5');
+        $this->assertEquals(array(-1, '2', false, -4.5), $actual);
+        $actual = $mux->dispatch('GET', '/p/-1/2/0/-4.5');
+        $this->assertEquals(array(-1, '2', false, -4.5), $actual);
     }
 
     public function wrongTypeP()

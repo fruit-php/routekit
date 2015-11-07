@@ -59,7 +59,7 @@ class Mux implements Router
             $pType = $pRef->getType()->__toString();
             switch ($pType) {
             case 'int':
-                if (!ctype_digit($param)) {
+                if (!is_numeric($param) or strpos($param, '.') !== false) {
                     $err($pRef, $pType);
                 }
                 $ret[$idx] = $param + 0;

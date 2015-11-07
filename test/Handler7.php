@@ -14,21 +14,6 @@ class Handler7
         $this->data = func_get_args();
     }
 
-    public function get()
-    {
-        return 'get';
-    }
-
-    public function post()
-    {
-        return 'post';
-    }
-
-    public function basic()
-    {
-        return 1;
-    }
-
     public function params(int $i, string $s, bool $b, float $f)
     {
         return func_get_args();

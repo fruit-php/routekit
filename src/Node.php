@@ -26,7 +26,7 @@ class Node
             throw new Exception("Handler is not callable");
         }
 
-        if ($callName == 'Closure::__invoke' or strpos($callName, '::') < 0) {
+        if ($callName == 'Closure::__invoke' or strpos($callName, '::') === false) {
             // functions, will throw exception if function not exist
             $ref = new ReflectionFunction($handler);
             return $ref->getParameters();
@@ -229,7 +229,7 @@ class Node
                 $pType = $pRef->getType()->__toString();
                 switch ($pType) {
                 case 'int':
-                    $func[] = sprintf('if (ctype_digit($params[%d])) $params[%d] += 0;', $idx, $idx);
+                    $func[] = sprintf('if (is_numeric($params[%d]) and strpos($params[%d], ".") === false) $params[%d] += 0;', $idx, $idx, $idx);
                     $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true));
                     break;
                 case 'float':
