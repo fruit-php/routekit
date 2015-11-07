@@ -34,6 +34,11 @@ class Handler7
         return func_get_args();
     }
 
+    public function params2(array $a)
+    {
+        return func_get_args();
+    }
+
     public function constructArgs()
     {
         return $this->data;

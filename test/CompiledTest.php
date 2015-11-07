@@ -62,8 +62,8 @@ class CompiledTest extends \PHPUnit_Framework_TestCase
      */
     public function testParamTypes()
     {
-        if (!class_exists('MyRoute7')) {
-            $cls = 'FruitTest\RouteKit\Handler7';
+        $cls = 'FruitTest\RouteKit\Handler7';
+        if (! class_exists('MyRoute7')) {
             $mux = new Mux;
             $mux->get('/p/:/:/:/:', array($cls, 'params'));
             $str = $mux->compile('MyRoute7');
@@ -102,5 +102,17 @@ class CompiledTest extends \PHPUnit_Framework_TestCase
 
         $mux = new $routerName;
         $actual = $mux->dispatch('GET', $uri);
+    }
+
+    /**
+     * @requires PHP 7
+     * @expectedException Exception
+     */
+    public function testUnsopportedType()
+    {
+        $cls = 'FruitTest\RouteKit\Handler7';
+        $mux = new Mux;
+        $mux->get('/p/:', array($cls, 'params2'));
+        $mux->compile();
     }
 }

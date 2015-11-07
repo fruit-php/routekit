@@ -3,6 +3,7 @@
 namespace Fruit\RouteKit;
 
 use Alom\Graphviz\Digraph;
+use Exception;
 use ReflectionClass;
 use ReflectionFunction;
 use ReflectionParameter;

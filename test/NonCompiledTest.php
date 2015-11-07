@@ -75,7 +75,7 @@ class NonCompiledTest extends \PHPUnit_Framework_TestCase
     
     /**
      * @requires PHP 7
-     * @expectedException Exception
+     * @expectedException Fruit\RouteKit\TypeMismatchException
      * @dataProvider wrongTypeP
      */
     public function testParamWrongType($uri)
@@ -84,5 +84,17 @@ class NonCompiledTest extends \PHPUnit_Framework_TestCase
         $mux = new Mux;
         $mux->get('/p/:/:/:/:', array($cls, 'params'));
         $actual = $mux->dispatch('GET', $uri);
+    }
+
+    /**
+     * @requires PHP 7
+     * @expectedException Exception
+     */
+    public function testUnsupportedType()
+    {
+        $cls = 'FruitTest\RouteKit\Handler7';
+        $mux = new Mux;
+        $mux->get('/p/:', array($cls, 'params2'));
+        $actual = $mux->dispatch('GET', '/p/a');
     }
 }
