@@ -238,8 +238,7 @@ class Node
                     break;
                 case 'bool':
                     $func[] = sprintf('$boolParam = strtolower($params[%d]);', $idx);
-                    $func[] = sprintf('if ($boolParam == "true") $params[%d] = true;', $idx);
-                    $func[] = sprintf('elseif ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
+                    $func[] = sprintf('if ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
                     $func[] = sprintf('else $params[%d] = $params[%d] == true;', $idx, $idx);
                     break;
                 case 'string':

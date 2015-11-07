@@ -72,9 +72,6 @@ class Mux implements Router
                 break;
             case 'bool':
                 switch (strtolower($param)) {
-                case 'true':
-                    $ret[$idx] = true;
-                    break;
                 case 'false':
                 case 'null':
                 case '0':
