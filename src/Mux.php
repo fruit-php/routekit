@@ -14,86 +14,17 @@ use ReflectionParameter;
 class Mux implements Router
 {
     private $roots;
-
-    /**
-     * Test if we are running the version which supports type hinting for primitive type .
-     */
-    private static function supportsTypeHinting()
-    {
-        static $shouldConvertType = null;
-        if ($shouldConvertType === null) {
-            $v = phpversion() + 0.0;
-            $shouldConvertType = $v >= 7;
-        }
-        return $shouldConvertType;
-    }
-
-    /**
-     * Convert type of parameters according to type hinting.
-     *
-     * It is recommanded to add type hinting to everything you wrote, including your handlers.
-     * But url parameters are strings, so it needs to be converted.
-     *
-     * This method can only convert parameters to primitive types, so it's meaningless with php5 and hhvm.
-     * We will skip this process if you are not using php7.
-     */
-    public static function typeConvert(array $params, array $pRefs)
-    {
-        $size = count($pRefs);
-        $ret = $params;
-        $err = function(ReflectionParameter $ref, $type) {
-            throw new TypeMismatchException($ref->getName(), $type);
-        };
-        
-        foreach ($params as $idx => $param) {
-            if ($idx >= $size) {
-                break;
-            }
-
-            $pRef = $pRefs[$idx];
-            if (!$pRef->hasType()) {
-                $ret[$idx] = $param;
-                continue;
-            }
-
-            $pType = $pRef->getType()->__toString();
-            switch ($pType) {
-            case 'int':
-                if (!is_numeric($param) or strpos($param, '.') !== false) {
-                    $err($pRef, $pType);
-                }
-                $ret[$idx] = $param + 0;
-                break;
-            case 'float':
-                if (!is_numeric($param)) {
-                    $err($pRef, $pType);
-                }
-                $ret[$idx] = $param + 0.0;
-                break;
-            case 'bool':
-                switch (strtolower($param)) {
-                case 'false':
-                case 'null':
-                case '0':
-                    $ret[$idx] = false;
-                    break;
-                default:
-                    $ret[$idx] = $param == true;
-                }
-                break;
-            case 'string':
-                $ret[$idx] = $param;
-                break;
-            default:
-                throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
-            }
-        }
-        return $ret;
-    }
+    private $interceptor;
 
     public function __construct()
     {
         $this->roots = array();
+    }
+
+    public function setInterceptor(Interceptor $int)
+    {
+        $this->interceptor = $int;
+        return $this;
     }
 
     /**
@@ -123,33 +54,7 @@ class Mux implements Router
                 $params[] = $param;
             }
         }
-        $handler = $cur->getHandler();
-        if ($handler == null) {
-            throw new Exception('No Matching handler for ' . $url);
-        }
-
-        list($cb, $args) = $handler;
-
-        if (is_array($cb)) {
-            $obj = $cb[0];
-            if (! is_object($obj)) {
-                $ref = new ReflectionClass($cb[0]);
-                if (is_array($args) and count($args) > 0) {
-                    $obj = $ref->newInstanceArgs($args);
-                } else {
-                    $obj = $ref->newInstance();
-                }
-            }
-            $cb[0] = $obj;
-        }
-        if (count($params) > 0) {
-            if (self::supportsTypeHinting()) {
-                $params = self::typeConvert($params, $cur->getParameters());
-            }
-            return call_user_func_array($cb, $params);
-        } else {
-            return call_user_func($cb);
-        }
+        return $cur->execute($url, $params, $this->interceptor);
     }
 
     private function add($method, $path, $handler, array $constructorArgs = null)
@@ -244,12 +149,12 @@ class Mux implements Router
             $root->fillID(0);
             $stateMap[$m] = $root->stateTable(array());
             $varMap[$m] = $root->varTable(array());
-            $funcMap[$m] = $root->funcTable(array());
+            $funcMap[$m] = $root->funcTable(array(), 0, $this->interceptor);
 
             // make handlers
             foreach ($funcMap[$m] as $id => $body) {
                 $fn = sprintf('handler_%s_%d', $m, $id);
-                $gen->addMethod('private', $fn, array('$params'), $body);
+                $gen->addMethod('private', $fn, array('$url', '$params'), $body);
                 $funcMap[$m][$id] = $fn;
             }
             $method = var_export($m, true);
@@ -279,7 +184,7 @@ class Mux implements Router
         $f[] = $in1 . '}';
         $f[] = $in1 . 'if ($i+1 == $sz and isset($this->funcMap[$method][$state])) {';
         $f[] = $in2 . '$f = $this->funcMap[$method][$state];';
-        $f[] = $in2 . 'return $this->$f($params);';
+        $f[] = $in2 . 'return $this->$f($uri, $params);';
         $f[] = $in1 . "}";
         $f[] = $in1 . 'if (isset($this->varMap[$method][$state])) ' . '{';
         $f[] = $in2 . '$state = $this->varMap[$method][$state];';

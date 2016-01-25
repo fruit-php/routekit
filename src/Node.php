@@ -37,13 +37,13 @@ class Node
             $handler = explode('::', $handler);
         }
 
-        
+
         // [class or object, method] form, throw exception if class not exist or method not found
         $ref = new ReflectionClass($handler[0]);
         $method = $ref->getMethod($handler[1]);
         return $method->getParameters();
     }
-    
+
     public function __construct()
     {
         $this->childNodes = array();
@@ -94,7 +94,32 @@ class Node
         return array($this->varChild, $path);
     }
 
-    public function exportHandler(array $params, $raw = false)
+    private function exportInterceptor($obj, $method, Interceptor $int = null)
+    {
+        $ret = [];
+        if ($int === null) {
+            return $ret;
+        }
+        $ref_int = new ReflectionFunction($int->generate());
+        $params = $ref_int->getParameters();
+        if (count($params) != 3) {
+            throw new Exception("Interception format is wrong, it must accept exactly 3 parameters.");
+        }
+        $p = $params[1];
+        $type = $p->getClass();
+        if ($type != null) {
+            $cls = new ReflectionClass($obj);
+            if (!$cls->isSubclassOf($type) and $cls != $type) {
+                return $ret;
+            }
+        }
+        $ret[] = '$int = ' . var_export($int, true) . ';';
+        $ret[] = '$f = $int->generate();';
+        $ret[] = sprintf('$f($url, $obj, %s);', var_export($method, true));
+        return $ret;
+    }
+
+    public function exportHandler(array $params, $raw = false, Interceptor $int = null)
     {
         if (!is_array($this->handler)) {
             return '';
@@ -120,13 +145,26 @@ class Node
                 }
                 $arg_str = implode(', ', $tmp);
             }
+
+            $intercept = $this->exportInterceptor($h[0], $h[1], $int);
+
             if (is_object($h[0])) {
                 $h[0] = var_export($h[0], true);
+                return array_merge(
+                    ['$obj = ' . $h[0] . ';'],
+                    $intercept,
+                    [sprintf('return $obj->%s(%s);', $h[1], $param_str)]
+                );
             }
-            return sprintf('(new %s(%s))->%s(%s)', $h[0], $arg_str, $h[1], $param_str);
+
+            return array_merge(
+                [sprintf('$obj = new %s(%s);', $h[0], $arg_str)],
+                $intercept,
+                [sprintf('return $obj->%s(%s);', $h[1], $param_str)]
+            );
         }
 
-        return $h . '(' . $param_str . ')';
+        return ['return  ' . $h . '(' . $param_str . ');'];
     }
 
     public function dot(Digraph $g, $curPath = '')
@@ -138,7 +176,7 @@ class Node
         // first, generate node about ourself
         $opt = array('label' => $name);
         if ($this->handler != null) {
-            $opt['label'] .= "\n" . $this->exportHandler(array());
+            $opt['label'] .= "\n" . implode('', $this->exportHandler(array()));
         }
         $g->node($name, $opt);
 
@@ -200,14 +238,14 @@ class Node
         return $tbl;
     }
 
-    public function funcTable(array $tbl, $argc = 0)
+    public function funcTable(array $tbl, $argc = 0, Interceptor $int = null)
     {
         foreach ($this->childNodes as $v) {
-            $tbl = $v->funcTable($tbl, $argc);
+            $tbl = $v->funcTable($tbl, $argc, $int);
         }
         if ($this->varChild != null) {
             $argc++;
-            $tbl = $this->varChild->funcTable($tbl, $argc);
+            $tbl = $this->varChild->funcTable($tbl, $argc, $int);
         }
         if ($this->handler != null) {
             $params = array();
@@ -228,28 +266,79 @@ class Node
 
                 $pType = $pRef->getType()->__toString();
                 switch ($pType) {
-                case 'int':
-                    $func[] = sprintf('if (is_numeric($params[%d]) and strpos($params[%d], ".") === false) $params[%d] += 0;', $idx, $idx, $idx);
-                    $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true));
-                    break;
-                case 'float':
-                    $func[] = sprintf('if (is_numeric($params[%d])) $params[%d] += 0.0;', $idx, $idx);
-                    $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "float");', var_export($pRef->getName(), true));
-                    break;
-                case 'bool':
-                    $func[] = sprintf('$boolParam = strtolower($params[%d]);', $idx);
-                    $func[] = sprintf('if ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
-                    $func[] = sprintf('else $params[%d] = $params[%d] == true;', $idx, $idx);
-                    break;
-                case 'string':
-                    break;
-                default:
-                    throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
+                    case 'int':
+                        $func[] = sprintf('if (is_numeric($params[%d]) and strpos($params[%d], ".") === false) $params[%d] += 0;', $idx, $idx, $idx);
+                        $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true));
+                        break;
+                    case 'float':
+                        $func[] = sprintf('if (is_numeric($params[%d])) $params[%d] += 0.0;', $idx, $idx);
+                        $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "float");', var_export($pRef->getName(), true));
+                        break;
+                    case 'bool':
+                        $func[] = sprintf('$boolParam = strtolower($params[%d]);', $idx);
+                        $func[] = sprintf('if ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
+                        $func[] = sprintf('else $params[%d] = $params[%d] == true;', $idx, $idx);
+                        break;
+                    case 'string':
+                        break;
+                    default:
+                        throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
                 }
             }
-            $func[] = 'return ' . $this->exportHandler($params, true) . ';';
+            $func = array_merge($func, $this->exportHandler($params, true, $int));
             $tbl[$this->id] = $func;
         }
         return $tbl;
+    }
+
+    private function intercept($url, $obj, $method, Interceptor $int = null)
+    {
+        if ($int === null) {
+            return;
+        }
+        $f = $int->generate();
+        $ref = new ReflectionFunction($f);
+        $params = $ref->getParameters();
+        if (count($params) != 3) {
+            throw new Exception("Interception format is wrong, it must accept exactly 3 parameters.");
+        }
+
+        $p = $params[1];
+        $cls = $p->getClass();
+        if ($cls != null and !$cls->isInstance($obj)) {
+            return;
+        }
+        $f($url, $obj, $method);
+    }
+
+    public function execute($url, $params, Interceptor $int = null)
+    {
+        $handler = $this->getHandler();
+        if ($handler == null) {
+            throw new Exception('No Matching handler for ' . $url);
+        }
+
+        list($cb, $args) = $handler;
+
+        if (is_array($cb)) {
+            $obj = $cb[0];
+            if (! is_object($obj)) {
+                $ref = new ReflectionClass($cb[0]);
+                if (is_array($args) and count($args) > 0) {
+                    $obj = $ref->newInstanceArgs($args);
+                } else {
+                    $obj = $ref->newInstance();
+                }
+            }
+            $cb[0] = $obj;
+            $this->intercept($url, $cb[0], $cb[1], $int);
+        }
+
+        if (count($params) > 0) {
+            $params = Type::typeConvert($params, $this->getParameters());
+            return call_user_func_array($cb, $params);
+        } else {
+            return call_user_func($cb);
+        }
     }
 }

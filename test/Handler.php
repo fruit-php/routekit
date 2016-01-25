@@ -5,6 +5,7 @@ namespace FruitTest\RouteKit;
 class Handler
 {
     private $data;
+    private $inject;
 
     public function __construct()
     {
@@ -34,5 +35,15 @@ class Handler
     public function constructArgs()
     {
         return $this->data;
+    }
+
+    public function inject($inj)
+    {
+        $this->inject = $inj;
+    }
+
+    public function inj()
+    {
+        return $this->inject;
     }
 }
