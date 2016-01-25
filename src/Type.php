@@ -2,6 +2,9 @@
 
 namespace Fruit\RouteKit;
 
+use ReflectionParameter;
+use Exception;
+
 class Type
 {
     /**
