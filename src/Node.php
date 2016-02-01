@@ -100,21 +100,21 @@ class Node
         if ($int === null) {
             return $ret;
         }
-        $ref_int = new ReflectionFunction($int->generate());
-        $params = $ref_int->getParameters();
+        $refInt = new ReflectionFunction($int->generate());
+        $params = $refInt->getParameters();
         if (count($params) != 3) {
             throw new Exception("Interception format is wrong, it must accept exactly 3 parameters.");
         }
-        $p = $params[1];
-        $type = $p->getClass();
+        $type = $params[1]->getClass();
         if ($type != null) {
             $cls = new ReflectionClass($obj);
             if (!$cls->isSubclassOf($type) and $cls != $type) {
                 return $ret;
             }
         }
-        $ret[] = '$int = ' . var_export($int, true) . ';';
-        $ret[] = '$f = $int->generate();';
+
+        // we have generated interceptor function and cached it in router, just use it here.
+        $ret[] = '$f = $this->interceptor;';
         $ret[] = sprintf('$f($url, $obj, %s);', var_export($method, true));
         return $ret;
     }
@@ -125,25 +125,25 @@ class Node
             return '';
         }
 
-        $param_str = '';
+        $paramStr = '';
         if (count($params) > 0) {
             $tmp = array();
             foreach ($params as $k => $p) {
                 $tmp[$k] = $raw?$p:var_export($p, true);
             }
-            $param_str = implode(', ', $tmp);
+            $paramStr = implode(', ', $tmp);
         }
         list($h, $args) = $this->handler;
 
         if (is_array($h)) {
             // (new class($args[0], $args[1]...))->method()
-            $arg_str = '';
+            $argStr = '';
             if (is_array($args)) {
                 $tmp = array();
                 foreach ($args as $k => $v) {
                     $tmp[$k] = var_export($v, true);
                 }
-                $arg_str = implode(', ', $tmp);
+                $argStr = implode(', ', $tmp);
             }
 
             $intercept = $this->exportInterceptor($h[0], $h[1], $int);
@@ -153,18 +153,18 @@ class Node
                 return array_merge(
                     ['$obj = ' . $h[0] . ';'],
                     $intercept,
-                    [sprintf('return $obj->%s(%s);', $h[1], $param_str)]
+                    [sprintf('return $obj->%s(%s);', $h[1], $paramStr)]
                 );
             }
 
             return array_merge(
-                [sprintf('$obj = new %s(%s);', $h[0], $arg_str)],
+                [sprintf('$obj = new %s(%s);', $h[0], $argStr)],
                 $intercept,
-                [sprintf('return $obj->%s(%s);', $h[1], $param_str)]
+                [sprintf('return $obj->%s(%s);', $h[1], $paramStr)]
             );
         }
 
-        return ['return  ' . $h . '(' . $param_str . ');'];
+        return ['return  ' . $h . '(' . $paramStr . ');'];
     }
 
     public function dot(Digraph $g, $curPath = '')
@@ -267,22 +267,32 @@ class Node
                 $pType = $pRef->getType()->__toString();
                 switch ($pType) {
                     case 'int':
+                        // @codingStandardsIgnoreStart
                         $func[] = sprintf('if (is_numeric($params[%d]) and strpos($params[%d], ".") === false) $params[%d] += 0;', $idx, $idx, $idx);
                         $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true));
+                        // @codingStandardsIgnoreEnd
                         break;
                     case 'float':
                         $func[] = sprintf('if (is_numeric($params[%d])) $params[%d] += 0.0;', $idx, $idx);
+                        // @codingStandardsIgnoreStart
                         $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "float");', var_export($pRef->getName(), true));
+                        // @codingStandardsIgnoreEnd
                         break;
                     case 'bool':
                         $func[] = sprintf('$boolParam = strtolower($params[%d]);', $idx);
+                        // @codingStandardsIgnoreStart
                         $func[] = sprintf('if ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
+                        // @codingStandardsIgnoreEnd
                         $func[] = sprintf('else $params[%d] = $params[%d] == true;', $idx, $idx);
                         break;
                     case 'string':
                         break;
                     default:
-                        throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
+                        throw new Exception(sprintf(
+                            'The type of $%s is %s, which is not supported.',
+                            $pRef->getName(),
+                            $pType
+                        ));
                 }
             }
             $func = array_merge($func, $this->exportHandler($params, true, $int));
@@ -324,11 +334,10 @@ class Node
             $obj = $cb[0];
             if (! is_object($obj)) {
                 $ref = new ReflectionClass($cb[0]);
-                if (is_array($args) and count($args) > 0) {
-                    $obj = $ref->newInstanceArgs($args);
-                } else {
-                    $obj = $ref->newInstance();
+                if (!is_array($args) or count($args) < 1) {
+                    $args = array();
                 }
+                $obj = $ref->newInstanceArgs($args);
             }
             $cb[0] = $obj;
             $this->intercept($url, $cb[0], $cb[1], $int);
@@ -336,9 +345,7 @@ class Node
 
         if (count($params) > 0) {
             $params = Type::typeConvert($params, $this->getParameters());
-            return call_user_func_array($cb, $params);
-        } else {
-            return call_user_func($cb);
         }
+        return call_user_func_array($cb, $params);
     }
 }

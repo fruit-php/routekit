@@ -15,4 +15,9 @@ class Interceptor implements \Fruit\RouteKit\Interceptor
             $obj->inject("inject");
         };
     }
+
+    public function compile()
+    {
+        return var_export($this, true);
+    }
 }

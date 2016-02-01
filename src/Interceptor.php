@@ -15,7 +15,7 @@ interface Interceptor
      * generate() generates an function, which accepts three parameters: raw url, instance of matched class and method.
      * You can do some modifications to that controller instance in the function, but not subtitude it.
      *
-     * You can also add type-hinting on the instance, so only that kind of object will pass to your interception function.
+     * You can also add type-hinting on the instance, only that kind of object will pass to your interception function.
      *
      * @return function(string $url, object $instance, string $method)
      */

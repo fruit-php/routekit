@@ -30,7 +30,7 @@ class Type
 
         $size = count($pRefs);
         $ret = $params;
-        $err = function(ReflectionParameter $ref, $type) {
+        $err = function (ReflectionParameter $ref, $type) {
             throw new TypeMismatchException($ref->getName(), $type);
         };
 
@@ -47,34 +47,38 @@ class Type
 
             $pType = $pRef->getType()->__toString();
             switch ($pType) {
-            case 'int':
-                if (!is_numeric($param) or strpos($param, '.') !== false) {
-                    $err($pRef, $pType);
-                }
-                $ret[$idx] = $param + 0;
-                break;
-            case 'float':
-                if (!is_numeric($param)) {
-                    $err($pRef, $pType);
-                }
-                $ret[$idx] = $param + 0.0;
-                break;
-            case 'bool':
-                switch (strtolower($param)) {
-                case 'false':
-                case 'null':
-                case '0':
-                    $ret[$idx] = false;
+                case 'int':
+                    if (!is_numeric($param) or strpos($param, '.') !== false) {
+                        $err($pRef, $pType);
+                    }
+                    $ret[$idx] = $param + 0;
+                    break;
+                case 'float':
+                    if (!is_numeric($param)) {
+                        $err($pRef, $pType);
+                    }
+                    $ret[$idx] = $param + 0.0;
+                    break;
+                case 'bool':
+                    switch (strtolower($param)) {
+                        case 'false':
+                        case 'null':
+                        case '0':
+                            $ret[$idx] = false;
+                            break;
+                        default:
+                            $ret[$idx] = $param == true;
+                    }
+                    break;
+                case 'string':
+                    $ret[$idx] = $param;
                     break;
                 default:
-                    $ret[$idx] = $param == true;
-                }
-                break;
-            case 'string':
-                $ret[$idx] = $param;
-                break;
-            default:
-                throw new Exception(sprintf('The type of $%s is %s, which is not supported.', $pRef->getName(), $pType));
+                    throw new Exception(sprintf(
+                        'The type of $%s is %s, which is not supported.',
+                        $pRef->getName(),
+                        $pType
+                    ));
             }
         }
         return $ret;

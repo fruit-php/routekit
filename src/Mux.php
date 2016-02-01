@@ -44,8 +44,8 @@ class Mux implements Router
         $arr = explode('/', $url);
         array_shift($arr);
         $params = array();
-        $arr_size = count($arr);
-        for ($i = 0; $i < $arr_size; $i++) {
+        $arrSize = count($arr);
+        for ($i = 0; $i < $arrSize; $i++) {
             list($cur, $param) = $cur->match($arr[$i]);
             if ($cur == null) {
                 throw new Exception('No Matching handler for ' . $url);
@@ -69,8 +69,8 @@ class Mux implements Router
         $arr = explode('/', $path);
         array_shift($arr);
         while (count($arr) > 0) {
-            $cur_path = array_shift($arr);
-            $cur = $cur->register($cur_path);
+            $curPath = array_shift($arr);
+            $cur = $cur->register($curPath);
         }
         if ($cur->getHandler() != null) {
             throw new Exception('Already registered a handler for ' . $path);
@@ -137,14 +137,11 @@ class Mux implements Router
         $gen = new UserClass($clsName);
         $gen->implementInterface('Fruit\RouteKit\Router');
 
-        $funcs = array();
-        $disp = array();
         $in1 = $indent;
         $in2 = $in1 . $in1;
         $stateMap = array();
         $varMap = array();
         $funcMap = array();
-        $handlerFuncs = array();
         foreach ($this->roots as $m => $root) {
             $root->fillID(0);
             $stateMap[$m] = $root->stateTable(array());
@@ -157,44 +154,50 @@ class Mux implements Router
                 $gen->addMethod('private', $fn, array('$url', '$params'), $body);
                 $funcMap[$m][$id] = $fn;
             }
-            $method = var_export($m, true);
 
         }
 
         $gen->addPrivateProperty('stateMap', $stateMap);
         $gen->addPrivateProperty('varMap', $varMap);
         $gen->addPrivateProperty('funcMap', $funcMap);
+        $gen->addPrivateProperty('interceptor', null);
 
         // make dispatcher
-        $f = array();
-        $f[] = '$method = strtolower($method);';
-        $f[] = 'if (!isset($this->stateMap[$method])) {';
-        $f[] = '    throw new Exception(\'unsupported method \' . $method);';
-        $f[] = '}';
-        $f[] = '$arr = explode(\'/\', $uri);';
-        $f[] = '$arr[] = \'\';';
-        $f[] = '$state = 0;';
-        $f[] = '$params = array();';
-        $f[] = '$sz = count($arr);';
-        $f[] = 'for ($i = 1; $i < $sz; $i++) {';
-        $f[] = $in1 . '$part = $arr[$i];';
-        $f[] = $in1 . 'if (isset($this->stateMap[$method][$state][$part])) ' . '{';
-        $f[] = $in2 . '$state = $this->stateMap[$method][$state][$part];';
-        $f[] = $in2 . 'continue;';
-        $f[] = $in1 . '}';
-        $f[] = $in1 . 'if ($i+1 == $sz and isset($this->funcMap[$method][$state])) {';
-        $f[] = $in2 . '$f = $this->funcMap[$method][$state];';
-        $f[] = $in2 . 'return $this->$f($uri, $params);';
-        $f[] = $in1 . "}";
-        $f[] = $in1 . 'if (isset($this->varMap[$method][$state])) ' . '{';
-        $f[] = $in2 . '$state = $this->varMap[$method][$state];';
-        $f[] = $in2 . '$params[] = $part;';
-        $f[] = $in2 . 'continue;';
-        $f[] = $in1 . '}';
-        $f[] = $in1 . 'throw new Exception("no matching rule for url [" . $uri . "]");';
-        $f[] = "}";
-        $f[] = 'throw new Exception(\'No matching rule for \' . $uri);';
-        $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $f);
+        $func = array();
+        $func[] = '$method = strtolower($method);';
+        $func[] = 'if (!isset($this->stateMap[$method])) {';
+        $func[] = '    throw new Exception(\'unsupported method \' . $method);';
+        $func[] = '}';
+        $func[] = '$arr = explode(\'/\', $uri);';
+        $func[] = '$arr[] = \'\';';
+        $func[] = '$state = 0;';
+        $func[] = '$params = array();';
+        $func[] = '$sz = count($arr);';
+        $func[] = 'for ($i = 1; $i < $sz; $i++) {';
+        $func[] = $in1 . '$part = $arr[$i];';
+        $func[] = $in1 . 'if (isset($this->stateMap[$method][$state][$part])) ' . '{';
+        $func[] = $in2 . '$state = $this->stateMap[$method][$state][$part];';
+        $func[] = $in2 . 'continue;';
+        $func[] = $in1 . '}';
+        $func[] = $in1 . 'if ($i+1 == $sz and isset($this->funcMap[$method][$state])) {';
+        $func[] = $in2 . '$f = $this->funcMap[$method][$state];';
+        $func[] = $in2 . 'return $this->$f($uri, $params);';
+        $func[] = $in1 . "}";
+        $func[] = $in1 . 'if (isset($this->varMap[$method][$state])) ' . '{';
+        $func[] = $in2 . '$state = $this->varMap[$method][$state];';
+        $func[] = $in2 . '$params[] = $part;';
+        $func[] = $in2 . 'continue;';
+        $func[] = $in1 . '}';
+        $func[] = $in1 . 'throw new Exception("no matching rule for url [" . $uri . "]");';
+        $func[] = "}";
+        $func[] = 'throw new Exception(\'No matching rule for \' . $uri);';
+        $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
+
+        if ($this->interceptor !== null) {
+            $func = array('$int = ' . $this->interceptor->compile() . ';');
+            $func[] = '$this->interceptor = $int->generate();';
+            $gen->addMethod('public', '__construct', array(), $func);
+        }
         return $gen;
     }
 
