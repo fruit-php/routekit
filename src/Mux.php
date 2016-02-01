@@ -30,7 +30,7 @@ class Mux implements Router
     /**
      * Calling right handler/controller according to http method and request uri.
      *
-     * @param $methond string of http request method, case insensitive.
+     * @param $method string of http request method, case insensitive.
      * @param $url string of request uri
      * @return whatever you return in the handler/controller, or an exception if no rule matched.
      */

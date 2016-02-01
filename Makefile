@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-.PHONY: force-update clean prepare lint \
+.PHONY: force-update clean prepare lint fix-style\
 	phploc pdepend phpmd phpcs phpcpd test docs
 
 lint:
@@ -62,4 +62,7 @@ phpcs: prepare
 phpcpd: prepare
 	vendor/bin/phpcpd --log-pmd build/logs/pmd-cpd.xml src
 
-all: clean prepare lint phploc pdepend phpmd phpcs phpcpd test docs
+all: clean prepare lint test phploc pdepend phpmd phpcs phpcpd docs
+
+fix-style:
+	vendor/bin/phpcs --report-diff --standard=PSR2 --extensions=php --ignore=autoload.php --encoding=utf-8 src
