@@ -54,9 +54,10 @@ pdepend: prepare
 
 phpmd: prepare
 	vendor/bin/phpmd src xml phpmd.xml --reportfile build/logs/pmd.xml || echo
+	vendor/bin/phpmd src text phpmd.xml --reportfile build/logs/pmd.txt || echo
 
 phpcs: prepare
-	vendor/bin/phpcs --report=checkstyle --report-file=build/logs/checkstyle.xml --standard=PSR2 --extensions=php --ignore=autoload.php src || echo
+	vendor/bin/phpcs --report-full=build/logs/phpcs.txt --report-checkstyle=build/logs/checkstyle.xml --standard=PSR2 --extensions=php --ignore=autoload.php --encoding=utf-8 src || echo
 
 phpcpd: prepare
 	vendor/bin/phpcpd --log-pmd build/logs/pmd-cpd.xml src
