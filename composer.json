@@ -15,12 +15,12 @@
 	"phpmd/phpmd": "*",
 	"sebastian/phpcpd": "*",
 	"corneltek/pux": "1.6.1",
+	"lox/xhprof": "@dev",
 	"fruit/benchkit": "~1"
     },
     "require": {
 	"alom/graphviz": "~1",
-	"corneltek/codegen": "~2",
-        "lox/xhprof": "dev-master"
+	"corneltek/codegen": "~2"
     },
     "suggest": {
     },
