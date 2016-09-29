@@ -260,6 +260,9 @@ class Node
                 }
 
                 $pRef = $this->parameters[$idx];
+                if (!method_exists($pRef, 'hasType')) {
+                    continue;
+                }
                 if (!$pRef->hasType()) {
                     continue;
                 }
