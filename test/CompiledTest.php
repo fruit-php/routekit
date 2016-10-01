@@ -17,8 +17,10 @@ class CompiledTest extends \PHPUnit_Framework_TestCase
             $mux->post('/', array($cls, 'post'));
 
             $mux->get('/basic', array($cls, 'basic'));
+            $mux->get('/params', array($cls, 'params'));
             $mux->get('/params/:', array($cls, 'params'));
             $mux->get('/params/:/2/:', array($cls, 'params'));
+            $mux->get('/params/2/:/:', array($cls, 'params'));
 
             $mux->get('/init', array($cls, 'constructArgs'), array(1, 2));
             $mux->get('/min', array($cls, 'constructArgs'), array("a b", "if else switch"));
@@ -48,8 +50,10 @@ class CompiledTest extends \PHPUnit_Framework_TestCase
 
     public function testParams()
     {
+        $this->assertEquals(array(), $this->M()->dispatch('GET', '/params'));
         $this->assertEquals(array('1'), $this->M()->dispatch('GET', '/params/1'));
         $this->assertEquals(array('foo', 'bar'), $this->M()->dispatch('GET', '/params/foo/2/bar'));
+        $this->assertEquals(array('foo', 'bar'), $this->M()->dispatch('GET', '/params/2/foo/bar'));
     }
 
     public function testInit()

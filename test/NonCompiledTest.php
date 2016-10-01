@@ -17,8 +17,10 @@ class NonCompiledTest extends \PHPUnit_Framework_TestCase
             $mux->post('/', array($cls, 'post'));
 
             $mux->get('/basic', array($cls, 'basic'));
+            $mux->get('/params', array($cls, 'params'));
             $mux->get('/params/:', array($cls, 'params'));
             $mux->get('/params/:/2/:', array($cls, 'params'));
+            $mux->get('/params/2/:/:', array($cls, 'params'));
 
             $mux->get('/init', array($cls, 'constructArgs'), array(1, 2));
             $this->mux = $mux;
@@ -42,8 +44,10 @@ class NonCompiledTest extends \PHPUnit_Framework_TestCase
 
     public function testParams()
     {
+        $this->assertEquals(array(), $this->M()->dispatch('GET', '/params'));
         $this->assertEquals(array('1'), $this->M()->dispatch('GET', '/params/1'));
         $this->assertEquals(array('foo', 'bar'), $this->M()->dispatch('GET', '/params/foo/2/bar'));
+        $this->assertEquals(array('foo', 'bar'), $this->M()->dispatch('GET', '/params/2/foo/bar'));
     }
 
     public function testInit()
@@ -80,7 +84,7 @@ class NonCompiledTest extends \PHPUnit_Framework_TestCase
             array('/p/1/2/3/orz'), // not float
         );
     }
-    
+
     /**
      * @requires PHP 7
      * @expectedException Fruit\RouteKit\TypeMismatchException
