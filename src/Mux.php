@@ -164,33 +164,18 @@ class Mux implements Router
 
         // make dispatcher
         $func = array();
-        $func[] = '$method = strtolower($method);';
-        $func[] = 'if (!isset($this->stateMap[$method])) {';
-        $func[] = '    throw new Exception(\'unsupported method \' . $method);';
+        $func[] = 'list($f, $params) = \Fruit\RouteKit\Mux::findRoute(';
+        $func[] = '    $method, $uri,';
+        $func[] = '    $this->stateMap,';
+        $func[] = '    $this->varMap,';
+        $func[] = '    $this->funcMap';
+        $func[] = ');';
+        $func[] = '';
+        $func[] = 'if ($f === null) {';
+        $func[] = '    throw new \Exception(\'No route for \' . $uri);';
         $func[] = '}';
-        $func[] = '$arr = explode(\'/\', $uri);';
-        $func[] = '$arr[] = \'\';';
-        $func[] = '$state = 0;';
-        $func[] = '$params = array();';
-        $func[] = '$sz = count($arr);';
-        $func[] = 'for ($i = 1; $i < $sz; $i++) {';
-        $func[] = $in1 . '$part = $arr[$i];';
-        $func[] = $in1 . 'if (isset($this->stateMap[$method][$state][$part])) ' . '{';
-        $func[] = $in2 . '$state = $this->stateMap[$method][$state][$part];';
-        $func[] = $in2 . 'continue;';
-        $func[] = $in1 . '}';
-        $func[] = $in1 . 'if ($i+1 == $sz and isset($this->funcMap[$method][$state])) {';
-        $func[] = $in2 . '$f = $this->funcMap[$method][$state];';
-        $func[] = $in2 . 'return $this->$f($uri, $params);';
-        $func[] = $in1 . "}";
-        $func[] = $in1 . 'if (isset($this->varMap[$method][$state])) ' . '{';
-        $func[] = $in2 . '$state = $this->varMap[$method][$state];';
-        $func[] = $in2 . '$params[] = $part;';
-        $func[] = $in2 . 'continue;';
-        $func[] = $in1 . '}';
-        $func[] = $in1 . 'throw new Exception("no matching rule for url [" . $uri . "]");';
-        $func[] = "}";
-        $func[] = 'throw new Exception(\'No matching rule for \' . $uri);';
+        $func[] = '';
+        $func[] = 'return $this->$f($uri, $params);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
 
         if ($this->interceptor !== null) {
@@ -215,4 +200,36 @@ class Mux implements Router
         $gen = $this->doCompile($clsName, $indent);
         return "<?php\n" . $gen->render() . "return new $clsName;\n";
     }
+
+    public static function findRoute($method, $uri, $smap, $vmap, $fmap)
+    {
+        $method = strtolower($method);
+        if (!isset($smap[$method])) {
+            throw new \Exception('unsupported method ' . $method);
+        }
+        $arr = explode('/', $uri);
+        $sz = count($arr);
+        $stack = array(array(1, 0, array()));
+        while (count($stack) > 0) {
+            list($i, $state, $params) = array_pop($stack);
+            if ($i === $sz) {
+                if (isset($fmap[$method][$state])) {
+                    return array($fmap[$method][$state], $params);
+                }
+
+                continue;
+            }
+            $part = $arr[$i];
+            if (isset($vmap[$method][$state])) {
+                $p = $params;
+                $p[] = $part;
+                $stack[] = array($i+1, $vmap[$method][$state], $p);
+            }
+            if (isset($smap[$method][$state][$part])) {
+                $stack[] = array($i+1, $smap[$method][$state][$part], $params);
+            }
+        }
+        return array(null, array());
+    }
+
 }

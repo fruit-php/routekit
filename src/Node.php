@@ -51,6 +51,9 @@ class Node
 
     public function setHandler(array $handler)
     {
+        if ($this->handler !== null) {
+            throw new Exception("Handler already exists");
+        }
         $this->handler = $handler;
         $this->parameters = self::getParamReflections($handler[0]);
     }
@@ -217,10 +220,12 @@ class Node
             $ret[$k] = $v->id;
             $tbl = $v->stateTable($tbl);
         }
-        if ($this->varChild != null) {
+        if ($this->varChild !== null) {
             $tbl = $this->varChild->stateTable($tbl);
         }
-        $tbl[$this->id] = $ret;
+        if (count($ret) > 0) {
+            $tbl[$this->id] = $ret;
+        }
         return $tbl;
     }
 
@@ -231,9 +236,7 @@ class Node
         }
         if ($this->varChild != null) {
             $tbl = $this->varChild->varTable($tbl);
-            if ($this->handler == null) {
-                $tbl[$this->id] = $this->varChild->id;
-            }
+            $tbl[$this->id] = $this->varChild->id;
         }
         return $tbl;
     }
@@ -243,11 +246,10 @@ class Node
         foreach ($this->childNodes as $v) {
             $tbl = $v->funcTable($tbl, $argc, $int);
         }
-        if ($this->varChild != null) {
-            $argc++;
-            $tbl = $this->varChild->funcTable($tbl, $argc, $int);
+        if ($this->varChild !== null) {
+            $tbl = $this->varChild->funcTable($tbl, $argc+1, $int);
         }
-        if ($this->handler != null) {
+        if ($this->handler !== null) {
             $params = array();
             for ($i = 0; $i < $argc; $i++) {
                 $params[$i] = '$params[' . $i . ']';
