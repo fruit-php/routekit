@@ -142,6 +142,7 @@ class Mux implements Router
         $stateMap = array();
         $varMap = array();
         $funcMap = array();
+        $funcCnt = 0;
         foreach ($this->roots as $m => $root) {
             $root->fillID(0);
             $stateMap[$m] = $root->stateTable(array());
@@ -150,37 +151,37 @@ class Mux implements Router
 
             // make handlers
             foreach ($funcMap[$m] as $id => $body) {
-                $fn = sprintf('handler_%s_%d', $m, $id);
-                $gen->addMethod('private', $fn, array('$url', '$params'), $body);
+                $fn = sprintf('f%d', $funcCnt++);
+                $gen->addMethod('private static', $fn, array('$url', '$params'), $body);
                 $funcMap[$m][$id] = $fn;
             }
 
         }
 
-        $gen->addPrivateProperty('stateMap', $stateMap);
-        $gen->addPrivateProperty('varMap', $varMap);
-        $gen->addPrivateProperty('funcMap', $funcMap);
-        $gen->addPrivateProperty('interceptor', null);
+        $gen->addStaticVar('stateMap', $stateMap, 'private');
+        $gen->addStaticVar('varMap', $varMap, 'private');
+        $gen->addStaticVar('funcMap', $funcMap, 'private');
+        $gen->addStaticVar('interceptor', null, 'private');
 
         // make dispatcher
         $func = array();
         $func[] = 'list($f, $params) = \Fruit\RouteKit\Mux::findRoute(';
         $func[] = '    $method, $uri,';
-        $func[] = '    $this->stateMap,';
-        $func[] = '    $this->varMap,';
-        $func[] = '    $this->funcMap';
+        $func[] = '    self::$stateMap,';
+        $func[] = '    self::$varMap,';
+        $func[] = '    self::$funcMap';
         $func[] = ');';
         $func[] = '';
         $func[] = 'if ($f === null) {';
         $func[] = '    throw new \Exception(\'No route for \' . $uri);';
         $func[] = '}';
         $func[] = '';
-        $func[] = 'return $this->$f($uri, $params);';
+        $func[] = 'return self::$f($uri, $params);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
 
         if ($this->interceptor !== null) {
             $func = array('$int = ' . $this->interceptor->compile() . ';');
-            $func[] = '$this->interceptor = $int->generate();';
+            $func[] = 'self::$interceptor = $int->generate();';
             $gen->addMethod('public', '__construct', array(), $func);
         }
         return $gen;

@@ -117,7 +117,7 @@ class Node
         }
 
         // we have generated interceptor function and cached it in router, just use it here.
-        $ret[] = '$f = $this->interceptor;';
+        $ret[] = '$f = self::$interceptor;';
         $ret[] = sprintf('$f($url, $obj, %s);', var_export($method, true));
         return $ret;
     }
