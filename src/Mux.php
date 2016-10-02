@@ -181,7 +181,9 @@ class Mux implements Router
 
         if ($this->interceptor !== null) {
             $func = array('$int = ' . $this->interceptor->compile() . ';');
-            $func[] = 'self::$interceptor = $int->generate();';
+            $func[] = 'if (self::$interceptor === null) {';
+            $func[] = '    self::$interceptor = $int->generate();';
+            $func[] = '}';
             $gen->addMethod('public', '__construct', array(), $func);
         }
         return $gen;

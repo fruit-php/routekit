@@ -97,12 +97,9 @@ class Node
         return array($this->varChild, $path);
     }
 
-    private function exportInterceptor($obj, $method, Interceptor $int = null)
+    private function exportInterceptor($obj, $method, Interceptor $int)
     {
         $ret = [];
-        if ($int === null) {
-            return $ret;
-        }
         $refInt = new ReflectionFunction($int->generate());
         $params = $refInt->getParameters();
         if (count($params) != 3) {
@@ -149,7 +146,10 @@ class Node
                 $argStr = implode(', ', $tmp);
             }
 
-            $intercept = $this->exportInterceptor($h[0], $h[1], $int);
+            $intercept = array();
+            if ($int !== null) {
+                $intercept = $this->exportInterceptor($h[0], $h[1], $int);
+            }
 
             if (is_object($h[0])) {
                 $h[0] = var_export($h[0], true);
@@ -306,11 +306,8 @@ class Node
         return $tbl;
     }
 
-    private function intercept($url, $obj, $method, Interceptor $int = null)
+    private function intercept($url, $obj, $method, Interceptor $int)
     {
-        if ($int === null) {
-            return;
-        }
         $f = $int->generate();
         $ref = new ReflectionFunction($f);
         $params = $ref->getParameters();
@@ -345,7 +342,9 @@ class Node
                 $obj = $ref->newInstanceArgs($args);
             }
             $cb[0] = $obj;
-            $this->intercept($url, $cb[0], $cb[1], $int);
+            if ($int !== null) {
+                $this->intercept($url, $cb[0], $cb[1], $int);
+            }
         }
 
         if (count($params) > 0) {
