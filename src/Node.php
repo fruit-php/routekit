@@ -22,26 +22,11 @@ class Node
      */
     public static function getParamReflections($handler)
     {
-        if (!is_callable($handler, true, $callName)) {
-            throw new Exception("Handler is not callable");
+        $refs = Util::reflectionCallable($handler);
+        if (count($refs) === 1) {
+            return $refs[0]->getParameters();
         }
-
-        if ($callName == 'Closure::__invoke' or strpos($callName, '::') === false) {
-            // functions, will throw exception if function not exist
-            $ref = new ReflectionFunction($handler);
-            return $ref->getParameters();
-        }
-
-        if (!is_array($handler)) {
-            // Class::StaticMethod form, just convert it to array form
-            $handler = explode('::', $handler);
-        }
-
-
-        // [class or object, method] form, throw exception if class not exist or method not found
-        $ref = new ReflectionClass($handler[0]);
-        $method = $ref->getMethod($handler[1]);
-        return $method->getParameters();
+        return $refs[1]->getParameters();
     }
 
     public function __construct()
@@ -125,18 +110,19 @@ class Node
             return '';
         }
 
-        $paramStr = '';
-        if (count($params) > 0) {
-            $tmp = array();
-            foreach ($params as $k => $p) {
-                $tmp[$k] = $raw?$p:var_export($p, true);
-            }
-            $paramStr = implode(', ', $tmp);
-        }
         list($h, $args) = $this->handler;
 
         if (is_array($h)) {
             // (new class($args[0], $args[1]...))->method()
+            $paramStr = '';
+            if (count($params) > 0) {
+                $tmp = array();
+                foreach ($params as $k => $p) {
+                    $tmp[$k] = $raw?$p:var_export($p, true);
+                }
+                $paramStr = implode(', ', $tmp);
+            }
+
             $argStr = '';
             if (is_array($args)) {
                 $tmp = array();
@@ -167,7 +153,7 @@ class Node
             );
         }
 
-        return ['return  ' . $h . '(' . $paramStr . ');'];
+        return ['return  ' . Util::compileCallable($h, $params) . ';'];
     }
 
     public function dot(Digraph $g, $curPath = '')
