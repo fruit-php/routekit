@@ -35,11 +35,7 @@ class Mux implements Router
      */
     public function setInterceptor($int)
     {
-        $refs = Util::reflectionCallable($int);
-        $f = $refs[0];
-        if (count($refs) === 2) {
-            $f = $refs[1];
-        }
+        list($f) = Util::reflectionCallable($int);
         if (count($f->getParameters()) !== 3) {
             throw new Exception('Interceptor must accepts exactly three parameters');
         }

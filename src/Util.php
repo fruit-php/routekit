@@ -27,7 +27,7 @@ class Util
 
         $c = new ReflectionClass($cb[0]);
         $f = $c->getMethod($cb[1]);
-        return [$c, $f];
+        return [$f, $c];
     }
     public static function compileCallable($cb, array $params = [])
     {
@@ -41,7 +41,7 @@ class Util
             return sprintf('%s(%s)', $f->getName(), implode(',', $params));
         }
 
-        list($ref, $f) = $res;
+        list($f, $ref) = $res;
         $tmpl = '%s::%s(%s)';
         $c = "\\" . $ref->getName();
 

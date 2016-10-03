@@ -22,11 +22,8 @@ class Node
      */
     public static function getParamReflections($handler)
     {
-        $refs = Util::reflectionCallable($handler);
-        if (count($refs) === 1) {
-            return $refs[0]->getParameters();
-        }
-        return $refs[1]->getParameters();
+        list($f) = Util::reflectionCallable($handler);
+        return $f->getParameters();
     }
 
     public function __construct()
@@ -272,11 +269,7 @@ class Node
 
     private function intercept($url, $obj, $method, $int)
     {
-        $refs = Util::reflectionCallable($int);
-        $f = $refs[0];
-        if (count($refs) === 2) {
-            $f = $refs[1];
-        }
+        list($f) = Util::reflectionCallable($int);
         $params = $f->getParameters();
         $p = $params[1];
         $cls = $p->getClass();
