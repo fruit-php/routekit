@@ -263,6 +263,8 @@ class Mux implements Router
         $func[] = '}';
         $func[] = '';
         $func[] = 'return self::$f($method, $uri, $params);';
+        $gen->addMethod('public static', 'execute', array('$method', '$uri'), $func);
+
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
 
         return $gen;
