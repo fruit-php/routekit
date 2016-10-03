@@ -15,10 +15,53 @@ class Mux implements Router
 {
     private $roots;
     private $interceptor;
+    private $currentFilters;
 
     public function __construct()
     {
         $this->roots = array();
+        $this->currentFilters = array(array(), array());
+    }
+
+    /**
+     * Set input and output filters
+     *
+     * Input filter is nothing but a callable, which accepts 4 parameters:
+     * http method, uri, handler callback and handler parameters. Returning
+     * anything other than NULL will keep handler from executing, and showing
+     * the result to user.
+     *
+     * Input filter is mean to filter the work flow, so it SHOULD NOT modify
+     * these parameters.
+     *
+     * Output filter is mean to filter data. It is a simple function accepts
+     * the result of handler, manipulate on it, then return it back. Anything
+     * returned from it will show to user, including NULL.
+     */
+    public function setFilters(array $input = array(), array $output = array())
+    {
+        // validate input filters
+        foreach ($input as $i) {
+            list($f) = Util::reflectionCallable($i);
+            if (count($f->getParameters()) !== 4) {
+                throw new Exception('Input filter must accepts exactly 4 parameters');
+            }
+        }
+        // validate output filters
+        foreach ($output as $o) {
+            list($f) = Util::reflectionCallable($o);
+            if (count($f->getParameters()) !== 1) {
+                throw new Exception('Output filter must accepts exactly 1 parameter');
+            }
+        }
+        $this->currentFilters = array($input, $output);
+
+        return $this;
+    }
+
+    public function getFilters()
+    {
+        return $this->currentFilters;
     }
 
     /**
@@ -72,7 +115,20 @@ class Mux implements Router
             }
         }
         list($cb, $params) = $cur->prepare($url, $params, $this->interceptor);
-        return call_user_func_array($cb, $params);
+        list($i, $o) = $cur->getFilters();
+        foreach ($i as $filter) {
+            $ret = $filter($method, $url, $cb, $params);
+            if ($ret !== null) {
+                return $ret;
+            }
+        }
+
+        $ret = call_user_func_array($cb, $params);
+
+        foreach ($o as $filter) {
+            $ret = $filter($ret);
+        }
+        return $ret;
     }
 
     private function add($method, $path, $handler, array $constructorArgs = null)
@@ -90,10 +146,23 @@ class Mux implements Router
             $curPath = array_shift($arr);
             $cur = $cur->register($curPath);
         }
-        if ($cur->getHandler() != null) {
+        $old = $cur->getHandler();
+        $h = [$handler, $constructorArgs];
+        if ($old !== null and $old !== $h) {
             throw new Exception('Already registered a handler for ' . $path);
+        } else {
+            $cur->setHandler(array($handler, $constructorArgs));
         }
-        $cur->setHandler(array($handler, $constructorArgs));
+
+        // add filters
+        list($input, $output) = $this->currentFilters;
+        foreach ($input as $i) {
+            $cur->addInputFilter($i);
+        }
+        foreach ($output as $o) {
+            $cur->addOutputFilter($o);
+        }
+
         return $this;
     }
 
@@ -170,7 +239,7 @@ class Mux implements Router
             // make handlers
             foreach ($funcMap[$m] as $id => $body) {
                 $fn = sprintf('f%d', $funcCnt++);
-                $gen->addMethod('private static', $fn, array('$url', '$params'), $body);
+                $gen->addMethod('private static', $fn, array('$method', '$url', '$params'), $body);
                 $funcMap[$m][$id] = $fn;
             }
 
@@ -193,7 +262,7 @@ class Mux implements Router
         $func[] = '    throw new \Exception(\'No route for \' . $uri);';
         $func[] = '}';
         $func[] = '';
-        $func[] = 'return self::$f($uri, $params);';
+        $func[] = 'return self::$f($method, $uri, $params);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
 
         return $gen;

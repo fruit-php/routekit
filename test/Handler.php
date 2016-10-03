@@ -46,4 +46,9 @@ class Handler
     {
         return $this->inject;
     }
+
+    public function filter()
+    {
+        return 'original';
+    }
 }

@@ -16,6 +16,8 @@ class Node
     private $childNodes;
     private $varChild;
     private $id;
+    private $inputFilters;
+    private $outputFilters;
 
     /**
      * Get parameter definition from handler.
@@ -29,6 +31,39 @@ class Node
     public function __construct()
     {
         $this->childNodes = array();
+        $this->inputFilters = array();
+        $this->outputFilters = array();
+    }
+
+    public function addInputFilter($cb)
+    {
+        list($f) = Util::reflectionCallable($cb);
+        $params = $f->getParameters();
+        if (count($params) !== 4) {
+            throw new Exception("Input filter must accepts exactly 4 parameters");
+        }
+
+        if (!in_array($cb, $this->inputFilters)) {
+            $this->inputFilters[] = $cb;
+        }
+    }
+
+    public function addOutputFilter($cb)
+    {
+        list($f) = Util::reflectionCallable($cb);
+        $params = $f->getParameters();
+        if (count($params) !== 1) {
+            throw new Exception("Output filter must accepts exactly 1 parameter");
+        }
+
+        if (!in_array($cb, $this->outputFilters)) {
+            $this->outputFilters[] = $cb;
+        }
+    }
+
+    public function getFilters()
+    {
+        return array($this->inputFilters, $this->outputFilters);
     }
 
     public function setHandler(array $handler)
@@ -107,28 +142,48 @@ class Node
                 $argStr = implode(', ', $tmp);
             }
 
+            $method = var_export($h[1], true);
             $intercept = array();
             if ($int !== null) {
-                $intercept[] = Util::compileCallable($int, ['$url', '$obj', var_export($h[1], true)]) . ';';
+                $intercept[] = Util::compileCallable($int, ['$url', '$obj', $method]) . ';';
             }
+
+            $input = array();
+            foreach ($this->inputFilters as $f) {
+                $input[] = '$ret = ' . Util::compileCallable($f, array('$method', '$url', '[$obj,'.$method.']', '$params')) . ';';
+                $input[] = 'if ($ret !== null) {';
+                $input[] = '    return $ret;';
+                $input[] = '}';
+            }
+            $output = array();
+            foreach ($this->outputFilters as $f) {
+                $output[] = '$ret = ' . Util::compileCallable($f, array('$ret')) . ';';
+            }
+            $post = array('return $ret;');
 
             if (is_object($h[0])) {
                 $h[0] = var_export($h[0], true);
                 return array_merge(
                     ['$obj = ' . $h[0] . ';'],
+                    $input,
                     $intercept,
-                    [sprintf('return $obj->%s(%s);', $h[1], $paramStr)]
+                    [sprintf('$ret = $obj->%s(%s);', $h[1], $paramStr)],
+                    $output,
+                    $post
                 );
             }
 
             return array_merge(
                 [sprintf('$obj = new %s(%s);', $h[0], $argStr)],
+                $input,
                 $intercept,
-                [sprintf('return $obj->%s(%s);', $h[1], $paramStr)]
+                [sprintf('$ret = $obj->%s(%s);', $h[1], $paramStr)],
+                $output,
+                $post
             );
         }
 
-        return ['return  ' . Util::compileCallable($h, $params) . ';'];
+        return ['return ' . Util::compileCallable($h, $params) . ';'];
     }
 
     public function dot(Digraph $g, $curPath = '')
