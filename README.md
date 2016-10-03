@@ -1,6 +1,6 @@
 # RouteKit
 
-This package is part of Fruit Framework.
+This package is part of Fruit Framework, requires PHP 7.
 
 RouteKit is a fast router implementation. It stores your routing rules in a tree structure, and you can make it even faster by generating a router class with builtin class generator.
 
@@ -135,9 +135,9 @@ then
 dot -Tsvg get.gv > get.svg
 ```
 
-## Type converting for PHP7
+## Type converting
 
-You can add type hintings to your handler if you are using PHP7, RouteKit will automatically do the type checking and converting for you. Currently we support only `int`, `float`, `bool` and `string`. We will not check/convert the parameters without type-hinted.
+You can add type hintings to your handler, RouteKit will automatically do the type checking and converting for you. Currently we support only `int`, `float`, `bool` and `string`. We will not check/convert the parameters without type-hinted.
 
 In non-compiled version, this is done by `ReflectionParameter::getType()`, so it would cost some performance for fetching reflection data.
 
