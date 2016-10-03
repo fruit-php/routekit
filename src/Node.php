@@ -82,29 +82,7 @@ class Node
         return array($this->varChild, $path);
     }
 
-    private function exportInterceptor($obj, $method, Interceptor $int)
-    {
-        $ret = [];
-        $refInt = new ReflectionFunction($int->generate());
-        $params = $refInt->getParameters();
-        if (count($params) != 3) {
-            throw new Exception("Interception format is wrong, it must accept exactly 3 parameters.");
-        }
-        $type = $params[1]->getClass();
-        if ($type != null) {
-            $cls = new ReflectionClass($obj);
-            if (!$cls->isSubclassOf($type) and $cls != $type) {
-                return $ret;
-            }
-        }
-
-        // we have generated interceptor function and cached it in router, just use it here.
-        $ret[] = '$f = self::$interceptor;';
-        $ret[] = sprintf('$f($url, $obj, %s);', var_export($method, true));
-        return $ret;
-    }
-
-    public function exportHandler(array $params, $raw = false, Interceptor $int = null)
+    public function exportHandler(array $params, $raw = false, $int = null)
     {
         if (!is_array($this->handler)) {
             return '';
@@ -134,7 +112,7 @@ class Node
 
             $intercept = array();
             if ($int !== null) {
-                $intercept = $this->exportInterceptor($h[0], $h[1], $int);
+                $intercept[] = Util::compileCallable($int, ['$url', '$obj', var_export($h[1], true)]) . ';';
             }
 
             if (is_object($h[0])) {
@@ -227,7 +205,7 @@ class Node
         return $tbl;
     }
 
-    public function funcTable(array $tbl, $argc = 0, Interceptor $int = null)
+    public function funcTable(array $tbl, $argc = 0, $int = null)
     {
         foreach ($this->childNodes as $v) {
             $tbl = $v->funcTable($tbl, $argc, $int);
@@ -292,24 +270,23 @@ class Node
         return $tbl;
     }
 
-    private function intercept($url, $obj, $method, Interceptor $int)
+    private function intercept($url, $obj, $method, $int)
     {
-        $f = $int->generate();
-        $ref = new ReflectionFunction($f);
-        $params = $ref->getParameters();
-        if (count($params) != 3) {
-            throw new Exception("Interception format is wrong, it must accept exactly 3 parameters.");
+        $refs = Util::reflectionCallable($int);
+        $f = $refs[0];
+        if (count($refs) === 2) {
+            $f = $refs[1];
         }
-
+        $params = $f->getParameters();
         $p = $params[1];
         $cls = $p->getClass();
         if ($cls != null and !$cls->isInstance($obj)) {
             return;
         }
-        $f($url, $obj, $method);
+        $int($url, $obj, $method);
     }
 
-    public function execute($url, $params, Interceptor $int = null)
+    public function execute($url, $params, $int = null)
     {
         $handler = $this->getHandler();
         if ($handler == null) {

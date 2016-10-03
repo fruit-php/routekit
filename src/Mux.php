@@ -21,8 +21,29 @@ class Mux implements Router
         $this->roots = array();
     }
 
-    public function setInterceptor(Interceptor $int)
+    /**
+     * Set interceptor function.
+     *
+     * Interceptor is a function running right before calling
+     * class-based controller. It MUST accepts exactly three
+     * parameters: matched url, class name (for static controller)
+     * or object (for method controller), and method name.
+     *
+     * Interceptor is designed to do change internal state of controller
+     * before running it, like injecting deps. It's not the entry point
+     * of middleware.
+     */
+    public function setInterceptor($int)
     {
+        $refs = Util::reflectionCallable($int);
+        $f = $refs[0];
+        if (count($refs) === 2) {
+            $f = $refs[1];
+        }
+        if (count($f->getParameters()) !== 3) {
+            throw new Exception('Interceptor must accepts exactly three parameters');
+        }
+
         $this->interceptor = $int;
         return $this;
     }
@@ -161,7 +182,6 @@ class Mux implements Router
         $gen->addStaticVar('stateMap', $stateMap, 'private');
         $gen->addStaticVar('varMap', $varMap, 'private');
         $gen->addStaticVar('funcMap', $funcMap, 'private');
-        $gen->addStaticVar('interceptor', null, 'private');
 
         // make dispatcher
         $func = array();
@@ -179,13 +199,6 @@ class Mux implements Router
         $func[] = 'return self::$f($uri, $params);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
 
-        if ($this->interceptor !== null) {
-            $func = array('$int = ' . $this->interceptor->compile() . ';');
-            $func[] = 'if (self::$interceptor === null) {';
-            $func[] = '    self::$interceptor = $int->generate();';
-            $func[] = '}';
-            $gen->addMethod('public', '__construct', array(), $func);
-        }
         return $gen;
     }
 

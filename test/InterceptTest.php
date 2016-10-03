@@ -6,41 +6,60 @@ use Fruit\RouteKit\Mux;
 
 class InterceptTest extends \PHPUnit_Framework_TestCase
 {
-    private $mux;
-
+    private $cls = 'FruitTest\RouteKit\Interceptor';
     private function M()
     {
         $cls = 'FruitTest\RouteKit\Handler';
-        if ($this->mux == null) {
-            $mux = new Mux;
-            $mux->setInterceptor(new Interceptor);
-            $mux->get('/', array($cls, 'inj'));
-            $this->mux = $mux;
-        }
-
-        return $this->mux;
+        $mux = new Mux;
+        $mux->get('/', array($cls, 'inj'));
+        return $mux;
     }
 
-    private function C()
+    public function testObjNonCompile()
     {
-        if (!class_exists('InterceptedRoute')) {
-            $mux = $this->M();
-            $str = $mux->compile('InterceptedRoute');
+        $mux = $this->M();
+        $c = $this->cls;
+        $mux->setInterceptor([new $c, 'obj']);
+
+        $actual = $mux->dispatch('get', '/');
+        $this->assertEquals('inject', $actual);
+    }
+
+    public function testStaticNonCompile()
+    {
+        $mux = $this->M();
+        $mux->setInterceptor([$this->cls, 'stati']);
+
+        $actual = $mux->dispatch('get', '/');
+        $this->assertEquals('inject', $actual);
+    }
+
+    public function testObjCompiled()
+    {
+        $mux = $this->M();
+        $c = $this->cls;
+        $mux->setInterceptor([new $c, 'obj']);
+        if (!class_exists('InterceptedRouteObj')) {
+            $str = $mux->compile('InterceptedRouteObj');
             eval(substr($str, 5));
         }
-        return new \InterceptedRoute;
-    }
+        $mux = new \InterceptedRouteObj;
 
-    public function testNonCompile()
-    {
-        $actual = $this->M()->dispatch('get', '/');
+        $actual = $mux->dispatch('get', '/');
         $this->assertEquals('inject', $actual);
     }
 
-    public function testCompiled()
+    public function testStaticCompiled()
     {
-        $actual = $this->C()->dispatch('get', '/');
+        $mux = $this->M();
+        $mux->setInterceptor([$this->cls, 'stati']);
+        if (!class_exists('InterceptedRouteStatic')) {
+            $str = $mux->compile('InterceptedRouteStatic');
+            eval(substr($str, 5));
+        }
+        $mux = new \InterceptedRouteStatic;
+
+        $actual = $mux->dispatch('get', '/');
         $this->assertEquals('inject', $actual);
     }
-
 }
