@@ -286,7 +286,7 @@ class Node
         $int($url, $obj, $method);
     }
 
-    public function execute($url, $params, $int = null)
+    public function prepare($url, $params, $int = null)
     {
         $handler = $this->getHandler();
         if ($handler == null) {
@@ -313,6 +313,6 @@ class Node
         if (count($params) > 0) {
             $params = Type::typeConvert($params, $this->getParameters());
         }
-        return call_user_func_array($cb, $params);
+        return [$cb, $params];
     }
 }

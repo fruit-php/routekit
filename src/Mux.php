@@ -75,7 +75,8 @@ class Mux implements Router
                 $params[] = $param;
             }
         }
-        return $cur->execute($url, $params, $this->interceptor);
+        list($cb, $params) = $cur->prepare($url, $params, $this->interceptor);
+        return call_user_func_array($cb, $params);
     }
 
     private function add($method, $path, $handler, array $constructorArgs = null)
