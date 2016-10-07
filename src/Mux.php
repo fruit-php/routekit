@@ -76,15 +76,15 @@ class Mux implements Router
      * before running it, like injecting deps. It's not the entry point
      * of middleware.
      */
-    public function setInterceptor($int)
+    public function setInterceptor(Interceptor $int)
     {
-        list($f) = Util::reflectionCallable($int);
-        if (count($f->getParameters()) !== 3) {
-            throw new Exception('Interceptor must accepts exactly three parameters');
-        }
-
         $this->interceptor = $int;
         return $this;
+    }
+
+    public function getInterceptor()
+    {
+        return $this->interceptor;
     }
 
     /**
@@ -239,7 +239,7 @@ class Mux implements Router
             // make handlers
             foreach ($funcMap[$m] as $id => $body) {
                 $fn = sprintf('f%d', $funcCnt++);
-                $gen->addMethod('private static', $fn, array('$method', '$url', '$params'), $body);
+                $gen->addMethod('private static', $fn, array('$method', '$url', '$params', '$int'), $body);
                 $funcMap[$m][$id] = $fn;
             }
 
@@ -248,6 +248,7 @@ class Mux implements Router
         $gen->addStaticVar('stateMap', $stateMap, 'private');
         $gen->addStaticVar('varMap', $varMap, 'private');
         $gen->addStaticVar('funcMap', $funcMap, 'private');
+        $gen->addPrivateProperty('interceptor', null);
 
         // make dispatcher
         $func = array();
@@ -262,10 +263,20 @@ class Mux implements Router
         $func[] = '    throw new \Exception(\'No route for \' . $uri);';
         $func[] = '}';
         $func[] = '';
-        $func[] = 'return self::$f($method, $uri, $params);';
-        $gen->addMethod('public static', 'execute', array('$method', '$uri'), $func);
-
+        $func[] = 'return self::$f($method, $uri, $params, $this->interceptor);';
         $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
+
+        if ($this->interceptor !== null) {
+            $func = array('$this->interceptor = ' . var_export($this->interceptor, true) . ';');
+            $gen->addMethod('public', '__construct', array(), $func);
+        }
+
+        $gen->addMethod(
+            'public',
+            'getInterceptor',
+            array(),
+            array('return $this->interceptor;')
+        );
 
         return $gen;
     }

@@ -5,4 +5,5 @@ namespace Fruit\RouteKit;
 interface Router
 {
     public function dispatch($method, $uri);
+    public function getInterceptor();
 }

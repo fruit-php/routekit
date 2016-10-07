@@ -114,7 +114,7 @@ class Node
         return array($this->varChild, $path);
     }
 
-    public function exportHandler(array $params, $raw = false, $int = null)
+    public function exportHandler(array $params, $raw = false, Interceptor $int = null)
     {
         if (!is_array($this->handler)) {
             return '';
@@ -145,7 +145,7 @@ class Node
             $method = var_export($h[1], true);
             $intercept = array();
             if ($int !== null) {
-                $intercept[] = Util::compileCallable($int, ['$url', '$obj', $method]) . ';';
+                $intercept[] = '$int->intercept($url, $obj, ' . $method . ');';
             }
 
             $input = array();
@@ -322,19 +322,7 @@ class Node
         return $tbl;
     }
 
-    private function intercept($url, $obj, $method, $int)
-    {
-        list($f) = Util::reflectionCallable($int);
-        $params = $f->getParameters();
-        $p = $params[1];
-        $cls = $p->getClass();
-        if ($cls != null and !$cls->isInstance($obj)) {
-            return;
-        }
-        $int($url, $obj, $method);
-    }
-
-    public function prepare($url, $params, $int = null)
+    public function prepare($url, $params, Interceptor $int = null)
     {
         $handler = $this->getHandler();
         if ($handler == null) {
@@ -354,7 +342,7 @@ class Node
             }
             $cb[0] = $obj;
             if ($int !== null) {
-                $this->intercept($url, $cb[0], $cb[1], $int);
+                $int->intercept($url, $cb[0], $cb[1]);
             }
         }
 
