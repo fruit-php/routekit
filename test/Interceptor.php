@@ -4,7 +4,7 @@ namespace FruitTest\RouteKit;
 
 class Interceptor implements \Fruit\RouteKit\Interceptor
 {
-    public function intercept($url, $obj, $method)
+    public function intercept(string $url, $obj, string $method)
     {
         $obj->inject('inject');
     }

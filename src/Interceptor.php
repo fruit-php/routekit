@@ -4,5 +4,5 @@ namespace Fruit\RouteKit;
 
 interface Interceptor
 {
-    public function intercept($url, $obj, $method);
+    public function intercept(string $url, $obj, string $method);
 }
