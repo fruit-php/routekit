@@ -22,7 +22,7 @@ class Node
     /**
      * Get parameter definition from handler.
      */
-    public static function getParamReflections($handler)
+    public static function getParamReflections($handler): array
     {
         list($f) = Util::reflectionCallable($handler);
         return $f->getParameters();
@@ -61,7 +61,7 @@ class Node
         }
     }
 
-    public function getFilters()
+    public function getFilters(): array
     {
         return array($this->inputFilters, $this->outputFilters);
     }
@@ -80,7 +80,7 @@ class Node
         return $this->handler;
     }
 
-    public function getParameters()
+    public function getParameters(): array
     {
         return $this->parameters;
     }
@@ -88,7 +88,7 @@ class Node
     /**
      *
      */
-    public function register($char)
+    public function register(string $char): Node
     {
         // test if variable
         if (substr($char, 0, 1) == ':') {
@@ -103,7 +103,7 @@ class Node
         return $this->childNodes[$char];
     }
 
-    public function match($path)
+    public function match(string $path): array
     {
         // match for static first
         if (isset($this->childNodes[$path])) {
@@ -114,7 +114,7 @@ class Node
         return array($this->varChild, $path);
     }
 
-    public function exportHandler(array $params, $raw = false, Interceptor $int = null)
+    public function exportHandler(array $params, bool $raw = false, Interceptor $int = null)
     {
         if (!is_array($this->handler)) {
             return '';
@@ -186,7 +186,7 @@ class Node
         return ['return ' . Util::compileCallable($h, $params) . ';'];
     }
 
-    public function dot(Digraph $g, $curPath = '')
+    public function dot(Digraph $g, string $curPath = '')
     {
         $name = $curPath;
         if ($name == '') {
@@ -217,7 +217,7 @@ class Node
         $this->varChild->dot($g, $childPath);
     }
 
-    public function fillID($id)
+    public function fillID(int $id): int
     {
         $this->id = $id;
         foreach ($this->childNodes as $node) {
@@ -229,7 +229,7 @@ class Node
         return $id;
     }
 
-    public function stateTable(array $tbl)
+    public function stateTable(array $tbl): array
     {
         $ret = array();
         foreach ($this->childNodes as $k => $v) {
@@ -245,7 +245,7 @@ class Node
         return $tbl;
     }
 
-    public function varTable(array $tbl)
+    public function varTable(array $tbl): array
     {
         foreach ($this->childNodes as $v) {
             $tbl = $v->varTable($tbl);
@@ -257,7 +257,7 @@ class Node
         return $tbl;
     }
 
-    public function funcTable(array $tbl, $argc = 0, $int = null)
+    public function funcTable(array $tbl, int $argc = 0, Interceptor $int = null): array
     {
         foreach ($this->childNodes as $v) {
             $tbl = $v->funcTable($tbl, $argc, $int);
@@ -322,7 +322,7 @@ class Node
         return $tbl;
     }
 
-    public function prepare($url, $params, Interceptor $int = null)
+    public function prepare(string $url, array $params, Interceptor $int = null): array
     {
         $handler = $this->getHandler();
         if ($handler == null) {

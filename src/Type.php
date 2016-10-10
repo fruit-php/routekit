@@ -16,7 +16,7 @@ class Type
      * This method can only convert parameters to primitive types, so it's meaningless with php5 and hhvm.
      * We will skip this process if you are not using php7.
      */
-    public static function typeConvert(array $params, array $pRefs)
+    public static function typeConvert(array $params, array $pRefs): array
     {
         static $shouldConvertType = null;
         if ($shouldConvertType === null) {

@@ -94,7 +94,7 @@ class Mux implements Router
      * @param $url string of request uri
      * @return whatever you return in the handler/controller, or an exception if no rule matched.
      */
-    public function dispatch($method, $url)
+    public function dispatch(string $method, string $url)
     {
         $method = strtolower($method);
         if (! isset($this->roots[$method])) {
@@ -131,7 +131,7 @@ class Mux implements Router
         return $ret;
     }
 
-    private function add($method, $path, $handler, array $constructorArgs = null)
+    private function add(string $method, string $path, $handler, array $constructorArgs = null)
     {
         // initialize root node
         if (!isset($this->roots[$method])) {
@@ -166,32 +166,32 @@ class Mux implements Router
         return $this;
     }
 
-    public function get($path, $handler, array $constructorArgs = null)
+    public function get(string $path, $handler, array $constructorArgs = null)
     {
         return $this->add('get', $path, $handler, $constructorArgs);
     }
 
-    public function post($path, $handler, array $constructorArgs = null)
+    public function post(string $path, $handler, array $constructorArgs = null)
     {
         return $this->add('post', $path, $handler, $constructorArgs);
     }
 
-    public function put($path, $handler, array $constructorArgs = null)
+    public function put(string $path, $handler, array $constructorArgs = null)
     {
         return $this->add('put', $path, $handler, $constructorArgs);
     }
 
-    public function delete($path, $handler, array $constructorArgs = null)
+    public function delete(string $path, $handler, array $constructorArgs = null)
     {
         return $this->add('delete', $path, $handler, $constructorArgs);
     }
 
-    public function option($path, $handler, array $constructorArgs = null)
+    public function option(string $path, $handler, array $constructorArgs = null)
     {
         return $this->add('option', $path, $handler, $constructorArgs);
     }
 
-    public function any($path, $handler, array $constructorArgs = null)
+    public function any(string $path, $handler, array $constructorArgs = null)
     {
         $this->add('get', $path, $handler, $constructorArgs);
         $this->add('post', $path, $handler, $constructorArgs);
@@ -215,7 +215,7 @@ class Mux implements Router
         return $ret;
     }
 
-    private function doCompile($clsName = '', $indent = '    ')
+    private function doCompile(string $clsName = '', string $indent = '    '): UserClass
     {
         if ($clsName == '') {
             $clsName = 'Fruit\RouteKit\GeneratedMux';
@@ -264,7 +264,7 @@ class Mux implements Router
         $func[] = '}';
         $func[] = '';
         $func[] = 'return self::$f($method, $uri, $params, $this->interceptor);';
-        $gen->addMethod('public', 'dispatch', array('$method', '$uri'), $func);
+        $gen->addMethod('public', 'dispatch', array('string $method', 'string $uri'), $func);
 
         if ($this->interceptor !== null) {
             $func = array('$this->interceptor = ' . var_export($this->interceptor, true) . ';');
@@ -290,13 +290,13 @@ class Mux implements Router
      * @param $clsName string custom class name, default to 'FruitRouteKitGeneratedMux'.
      * @param $indent string how you indent generated class.
      */
-    public function compile($clsName = '', $indent = '    ')
+    public function compile(string $clsName = '', string $indent = '    '): string
     {
         $gen = $this->doCompile($clsName, $indent);
         return "<?php\n" . $gen->render() . "return new $clsName;\n";
     }
 
-    public static function findRoute($method, $uri, $smap, $vmap, $fmap)
+    public static function findRoute(string $method, string $uri, array $smap, array $vmap, array $fmap): array
     {
         $method = strtolower($method);
         if (!isset($smap[$method])) {
