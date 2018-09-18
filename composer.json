@@ -14,14 +14,14 @@
     "pdepend/pdepend": "*",
     "phpmd/phpmd": "*",
     "sebastian/phpcpd": "*",
-    "corneltek/pux": "1.6.1",
+    "corneltek/pux": "~1",
     "lox/xhprof": "@dev",
     "fruit/benchkit": "~1"
   },
   "require": {
     "php": "^7",
     "alom/graphviz": "~1",
-    "corneltek/codegen": "~2"
+    "corneltek/codegen": "~3"
   },
   "suggest": {
   },
