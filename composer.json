@@ -21,10 +21,11 @@
   "require": {
     "php": "^7",
     "alom/graphviz": "~1",
-    "corneltek/codegen": "~3"
+    "corneltek/codegen": "~4.0@dev"
   },
   "suggest": {
   },
+  "extra": { "branch-alias": { "dev-master": "1.x-dev" } },
   "autoload": {
     "psr-4": {
       "Fruit\\RouteKit\\": "src",
