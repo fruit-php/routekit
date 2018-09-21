@@ -7,6 +7,10 @@ use Exception;
 use ReflectionClass;
 use ReflectionFunction;
 use ReflectionParameter;
+use Fruit\CompileKit\Block;
+use Fruit\CompileKit\Value;
+use Fruit\CompileKit\Renderable;
+use Fruit\CompileKit\FunctionCall as Call;
 
 // This class is only for internal use.
 class Node
@@ -114,76 +118,119 @@ class Node
         return array($this->varChild, $path);
     }
 
-    public function exportHandler(array $params, bool $raw = false, Interceptor $int = null)
+    public function exportHandler(array $params, bool $raw = false, Interceptor $int = null): Renderable
     {
+        $ret = new Block;
         if (!is_array($this->handler)) {
-            return '';
+            return $ret;
         }
 
         list($h, $args) = $this->handler;
 
         if (is_array($h)) {
-            // (new class($args[0], $args[1]...))->method()
-            $paramStr = '';
+            $paramFiller = function (Call $c): Call {
+                return $c;
+            };
             if (count($params) > 0) {
-                $tmp = array();
-                foreach ($params as $k => $p) {
-                    $tmp[$k] = $raw?$p:var_export($p, true);
-                }
-                $paramStr = implode(', ', $tmp);
+                $paramFiller = function (Call $c) use ($params, $raw): Call {
+                    foreach ($params as $p) {
+                        if ($raw) {
+                            $c->rawArg($p);
+                            continue;
+                        }
+
+                        $c->arg($p);
+                    }
+                    return $c;
+                };
             }
 
-            $argStr = '';
+            $argFiller = function (Call $c): Call {
+                return $c;
+            };
             if (is_array($args)) {
-                $tmp = array();
-                foreach ($args as $k => $v) {
-                    $tmp[$k] = var_export($v, true);
-                }
-                $argStr = implode(', ', $tmp);
+                $argFiller = function (Call $c) use ($args): Call {
+                    foreach ($args as $a) {
+                        $c->arg($a);
+                    }
+                    return $c;
+                };
             }
 
-            $method = var_export($h[1], true);
-            $intercept = array();
+            $method = $h[1];
+
+            $exec = (new Block)->append(Value::assign(
+                Value::as('$ret'),
+                $paramFiller(new Call('$obj->' . $method))
+            ));
+
+            $intercept = new Block;
             if ($int !== null) {
-                $intercept[] = '$int->intercept($url, $obj, ' . $method . ');';
-            }
-
-            $input = array();
-            foreach ($this->inputFilters as $f) {
-                $input[] = '$ret = ' . Util::compileCallable($f, array('$method', '$url', '[$obj,'.$method.']', '$params')) . ';';
-                $input[] = 'if ($ret !== null) {';
-                $input[] = '    return $ret;';
-                $input[] = '}';
-            }
-            $output = array();
-            foreach ($this->outputFilters as $f) {
-                $output[] = '$ret = ' . Util::compileCallable($f, array('$ret')) . ';';
-            }
-            $post = array('return $ret;');
-
-            if (is_object($h[0])) {
-                $h[0] = var_export($h[0], true);
-                return array_merge(
-                    ['$obj = ' . $h[0] . ';'],
-                    $input,
-                    $intercept,
-                    [sprintf('$ret = $obj->%s(%s);', $h[1], $paramStr)],
-                    $output,
-                    $post
+                $intercept->append(
+                    Value::stmt(
+                        (new Call('$int->intercept'))
+                            ->rawArg('$url')
+                            ->rawArg('$obj')
+                            ->arg($method)
+                    )
                 );
             }
 
-            return array_merge(
-                [sprintf('$obj = new %s(%s);', $h[0], $argStr)],
+            $input = new Block;
+            foreach ($this->inputFilters as $f) {
+                $input->append(
+                    Value::stmt(
+                        Value::as('$ret ='),
+                        Util::compileCallable(
+                            $f,
+                            [
+                                '$method',
+                                '$url',
+                                '[$obj,'.Value::of($method).render().']',
+                                '$params'
+                            ]
+                        )
+                    )
+                )
+                    ->line('if ($ret !== null) {')
+                    ->child((new Block)->return(Value::as('$ret;')))
+                    ->line('}');
+            }
+            $output = new Block;
+            foreach ($this->outputFilters as $f) {
+                $output->append(Value::stmt(
+                    Value::as('$ret ='),
+                    Util::compileCallable($f, array('$ret'))
+                ));
+            }
+            $post = (new Block)->return(Value::as('$ret'));
+
+            $obj = new Block;
+            if (is_object($h[0])) {
+                $obj->append(Value::assign(
+                    Value::as('$obj'),
+                    Value::of($h[0])
+                ));
+            } else {
+                $obj->append(Value::assign(
+                    Value::as('$obj'),
+                    $argFiller((new Call('new ' . $h[0])))
+                ));
+            }
+
+            return $ret->append(
+                $obj,
                 $input,
                 $intercept,
-                [sprintf('$ret = $obj->%s(%s);', $h[1], $paramStr)],
+                $exec,
                 $output,
                 $post
             );
         }
 
-        return ['return ' . Util::compileCallable($h, $params) . ';'];
+        return (new Block)->return(
+            Util::compileCallable($h, $params)
+        );
     }
 
     public function dot(Digraph $g, string $curPath = '')
@@ -270,7 +317,7 @@ class Node
             for ($i = 0; $i < $argc; $i++) {
                 $params[$i] = '$params[' . $i . ']';
             }
-            $func = array();
+            $func = new Block;
             $size = count($this->parameters);
             foreach ($params as $idx => $param) {
                 if ($idx >= $size) {
@@ -289,22 +336,25 @@ class Node
                 switch ($pType) {
                     case 'int':
                         // @codingStandardsIgnoreStart
-                        $func[] = sprintf('if (is_numeric($params[%d]) and strpos($params[%d], ".") === false) $params[%d] += 0;', $idx, $idx, $idx);
-                        $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true));
+                        $func
+                            ->line(sprintf('if (is_numeric($params[%d]) and strpos($params[%d], ".") === false) $params[%d] += 0;', $idx, $idx, $idx))
+                            ->line(sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "int");', var_export($pRef->getName(), true)));
                         // @codingStandardsIgnoreEnd
                         break;
                     case 'float':
-                        $func[] = sprintf('if (is_numeric($params[%d])) $params[%d] += 0.0;', $idx, $idx);
                         // @codingStandardsIgnoreStart
-                        $func[] = sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "float");', var_export($pRef->getName(), true));
+                        $func
+                            ->line(sprintf('if (is_numeric($params[%d])) $params[%d] += 0.0;', $idx, $idx))
+                            ->line(sprintf('else throw new Fruit\RouteKit\TypeMismatchException(%s, "float");', var_export($pRef->getName(), true)));
                         // @codingStandardsIgnoreEnd
                         break;
                     case 'bool':
-                        $func[] = sprintf('$boolParam = strtolower($params[%d]);', $idx);
                         // @codingStandardsIgnoreStart
-                        $func[] = sprintf('if ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx);
+                        $func
+                            ->line(sprintf('$boolParam = strtolower($params[%d]);', $idx))
+                            ->line(sprintf('if ($boolParam == "false" or $boolParam == "null" or $boolParam == "0") $params[%d] = false;', $idx))
+                            ->line(sprintf('else $params[%d] = $params[%d] == true;', $idx, $idx));
                         // @codingStandardsIgnoreEnd
-                        $func[] = sprintf('else $params[%d] = $params[%d] == true;', $idx, $idx);
                         break;
                     case 'string':
                         break;
@@ -316,7 +366,7 @@ class Node
                         ));
                 }
             }
-            $func = array_merge($func, $this->exportHandler($params, true, $int));
+            $func->append($this->exportHandler($params, true, $int));
             $tbl[$this->id] = $func;
         }
         return $tbl;

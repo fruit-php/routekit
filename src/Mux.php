@@ -236,16 +236,16 @@ class Mux implements Router, Compilable
             $funcMap[$m] = $root->funcTable(array(), 0, $this->interceptor);
 
             // make handlers
-            foreach ($funcMap[$m] as $id => $body) {
+            array_walk($funcMap[$m], function (&$body, $id) use ($ret, &$funcCnt) {
                 $fn = sprintf('f%d', $funcCnt++);
                 $f = $ret->canStatic($fn, 'private');
                 $f->accept('method')->type('string');
                 $f->accept('url')->type('string');
                 $f->accept('params')->type('array');
                 $f->accept('int')->type('\Fruit\RouteKit\Interceptor');
-                $f->block($body);
-                $funcMap[$m][$id] = $fn;
-            }
+                $f->append($body);
+                $body = $fn;
+            });
         }
 
         $ret->hasStatic('stateMap', 'private')->bindDefault($stateMap);
@@ -346,5 +346,4 @@ class Mux implements Router, Compilable
         }
         return array(null, array());
     }
-
 }
