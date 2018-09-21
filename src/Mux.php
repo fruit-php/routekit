@@ -206,20 +206,6 @@ class Mux implements Router, Compilable
         return $this;
     }
 
-    /**
-     * Generate graphviz dot diagram
-     */
-    public function dot()
-    {
-        $ret = array();
-        foreach ($this->roots as $k => $root) {
-            $g = new Digraph($k);
-            $root->dot($g);
-            $ret[$k] = $g->render();
-        }
-        return $ret;
-    }
-
     private function doCompile(): Renderable
     {
         $ret = (new C)
@@ -316,6 +302,11 @@ class Mux implements Router, Compilable
     public function compile(): Renderable
     {
         return $this->doCompile();
+    }
+
+    public function compileFile(bool $pretty = true): string
+    {
+        return (new Block)->return($this->compile())->asFile()->render($pretty);
     }
 
     public static function findRoute(string $method, string $uri, array $smap, array $vmap, array $fmap): array

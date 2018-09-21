@@ -233,37 +233,6 @@ class Node
         );
     }
 
-    public function dot(Digraph $g, string $curPath = '')
-    {
-        $name = $curPath;
-        if ($name == '') {
-            $name = 'root';
-        }
-        // first, generate node about ourself
-        $opt = array('label' => $name);
-        if ($this->handler != null) {
-            $opt['label'] .= "\n" . implode('', $this->exportHandler(array()));
-        }
-        $g->node($name, $opt);
-
-        // then, generate edges and related nodes
-        foreach ($this->childNodes as $k => $node) {
-            $path = $k;
-            $childPath = $curPath . '/' . $path;
-            $g->edge(array($name, $childPath), array('label' => $path));
-            $node->dot($g, $childPath);
-        }
-
-        // last, generate regexpChild
-        if ($this->varChild == null) {
-            return;
-        }
-
-        $childPath = $curPath . '/[var]';
-        $g->edge(array($name, $childPath), array('label' => '[*]'));
-        $this->varChild->dot($g, $childPath);
-    }
-
     public function fillID(int $id): int
     {
         $this->id = $id;
