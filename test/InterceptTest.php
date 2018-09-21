@@ -27,13 +27,10 @@ class InterceptTest extends \PHPUnit\Framework\TestCase
     {
         $mux = $this->M();
         $mux->setInterceptor(new Interceptor);
-        if (!class_exists('InterceptedRouteObj')) {
-            $str = $mux->compile('InterceptedRouteObj');
-            eval(substr($str, 5));
-        }
-        $mux = new \InterceptedRouteObj;
+        $str = '$mymux = ' . $mux->compile()->render() . ';';
+        eval($str);
 
-        $actual = $mux->dispatch('get', '/');
+        $actual = $mymux->dispatch('get', '/');
         $this->assertEquals('inject', $actual);
     }
 }
