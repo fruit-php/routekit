@@ -242,7 +242,9 @@ class Mux implements Router, Compilable
                 $f->accept('method')->type('string');
                 $f->accept('url')->type('string');
                 $f->accept('params')->type('array');
-                $f->accept('int')->type('\Fruit\RouteKit\Interceptor');
+                $f->accept('int')
+                    ->type('\Fruit\RouteKit\Interceptor')
+                    ->bindDefault(null);
                 $f->append($body);
                 $body = $fn;
             });

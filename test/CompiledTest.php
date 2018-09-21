@@ -11,7 +11,7 @@ class CompiledTest extends \PHPUnit\Framework\TestCase
     private function M()
     {
         $cls = 'FruitTest\RouteKit\Handler';
-        if (! class_exists('MyRoute')) {
+        if ($this->mux == null) {
             $mux = new Mux;
             $mux->get('/', array($cls, 'get'));
             $mux->post('/', array($cls, 'post'));
@@ -24,12 +24,8 @@ class CompiledTest extends \PHPUnit\Framework\TestCase
 
             $mux->get('/init', array($cls, 'constructArgs'), array(1, 2));
             $mux->get('/min', array($cls, 'constructArgs'), array("a b", "if else switch"));
-            $str = $mux->compile('MyRoute');
-            eval(substr($str, 5));
-        }
-
-        if ($this->mux == null) {
-            $this->mux = new \MyRoute;
+            $str = '$this->mux = ' . $mux->compile()->render() . ';';
+            eval($str);
         }
 
         return $this->mux;
@@ -61,19 +57,20 @@ class CompiledTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals(array(1, 2), $this->M()->dispatch('GET', '/init'));
     }
 
+    private $mux7 = null;
     /**
      * @requires PHP 7
      */
     public function testParamTypes()
     {
         $cls = 'FruitTest\RouteKit\Handler7';
-        if (! class_exists('MyRoute7')) {
+        if ($this->mux7 === null) {
             $mux = new Mux;
             $mux->get('/p/:/:/:/:', array($cls, 'params'));
-            $str = $mux->compile('MyRoute7');
-            eval(substr($str, 5));
+            $str = '$this->mux7 = ' . $mux->compile()->render() . ';';
+            eval($str);
         }
-        $mux = new \MyRoute7;
+        $mux = $this->mux7;
         $actual = $mux->dispatch('GET', '/p/1/2/true/4.5');
         $this->assertEquals(array(1, '2', true, 4.5), $actual);
         $actual = $mux->dispatch('GET', '/p/-1/2/1/-4.5');
@@ -108,12 +105,11 @@ class CompiledTest extends \PHPUnit\Framework\TestCase
             $cls = 'FruitTest\RouteKit\Handler7';
             $mux = new Mux;
             $mux->get('/p/:/:/:/:', array($cls, 'params'));
-            $str = $mux->compile($routerName);
-            eval(substr($str, 5));
+            $str = '$mymux = ' . $mux->compile()->render() . ';';
+            eval($str);
         }
 
-        $mux = new $routerName;
-        $actual = $mux->dispatch('GET', $uri);
+        $actual = $mymux->dispatch('GET', $uri);
     }
 
     /**
