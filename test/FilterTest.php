@@ -46,42 +46,33 @@ class FilterTest extends \PHPUnit\Framework\TestCase
     public function testInputPassCompiled()
     {
         $mux = $this->M([[$this->cls, 'ipass']], []);
-        if (!class_exists('FilteredRouteInputPass')) {
-            $str = $mux->compile('FilteredRouteInputPass');
-            eval(substr($str, 5));
-        }
-        $mux = new \FilteredRouteInputPass;
+        $str = '$mymux = ' . $mux->compile()->render() . ';';
+        eval($str);
         $c = $this->cls;
 
-        $actual = $mux->dispatch('get', '/');
+        $actual = $mymux->dispatch('get', '/');
         $this->assertEquals('original', $actual);
     }
 
     public function testInputBlockCompiled()
     {
         $mux = $this->M([[$this->cls, 'iblock']], []);
-        if (!class_exists('FilteredRouteInputBlock')) {
-            $str = $mux->compile('FilteredRouteInputBlock');
-            eval(substr($str, 5));
-        }
-        $mux = new \FilteredRouteInputBlock;
+        $str = '$mymux = ' . $mux->compile()->render() . ';';
+        eval($str);
         $c = $this->cls;
 
-        $actual = $mux->dispatch('get', '/');
+        $actual = $mymux->dispatch('get', '/');
         $this->assertEquals('blocked', $actual);
     }
 
     public function testOutputCompiled()
     {
         $mux = $this->M([], [[$this->cls, 'o']]);
-        if (!class_exists('FilteredRouteOutput')) {
-            $str = $mux->compile('FilteredRouteOutput');
-            eval(substr($str, 5));
-        }
-        $mux = new \FilteredRouteOutput;
+        $str = '$mymux = ' . $mux->compile()->render() . ';';
+        eval($str);
         $c = $this->cls;
 
-        $actual = $mux->dispatch('get', '/');
+        $actual = $mymux->dispatch('get', '/');
         $this->assertEquals('filtered', $actual);
     }
 }

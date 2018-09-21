@@ -186,7 +186,7 @@ class Node
                             [
                                 '$method',
                                 '$url',
-                                '[$obj,'.Value::of($method).render().']',
+                                '[$obj,'.Value::of($method)->render().']',
                                 '$params'
                             ]
                         )
