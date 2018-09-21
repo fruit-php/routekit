@@ -3,15 +3,20 @@
 namespace Fruit\RouteKit;
 
 use Alom\Graphviz\Digraph;
-use CodeGen\UserClass;
 use Exception;
 use ReflectionClass;
 use ReflectionParameter;
+use Fruit\CompileKit\AnonymousClass as C;
+use Fruit\CompileKit\FunctionCall as Call;
+use Fruit\CompileKit\Value;
+use Fruit\CompileKit\Block;
+use Fruit\CompileKit\Compilable;
+use Fruit\CompileKit\Renderable;
 
 /**
  * Mux is where you place routing rules and dispatch request according to these rules.
  */
-class Mux implements Router
+class Mux implements Router, Compilable
 {
     private $roots;
     private $interceptor;
@@ -215,17 +220,11 @@ class Mux implements Router
         return $ret;
     }
 
-    private function doCompile(string $clsName = '', string $indent = '    '): UserClass
+    private function doCompile(): Renderable
     {
-        if ($clsName == '') {
-            $clsName = 'Fruit\RouteKit\GeneratedMux';
-        }
+        $ret = (new C)
+            ->implements('\Fruit\RouteKit\Router');
 
-        $gen = new UserClass($clsName);
-        $gen->implementInterface('Fruit\RouteKit\Router');
-
-        $in1 = $indent;
-        $in2 = $in1 . $in1;
         $stateMap = array();
         $varMap = array();
         $funcMap = array();
@@ -239,61 +238,82 @@ class Mux implements Router
             // make handlers
             foreach ($funcMap[$m] as $id => $body) {
                 $fn = sprintf('f%d', $funcCnt++);
-                $gen->addMethod('private static', $fn, array('$method', '$url', '$params', '$int'), $body);
+                $f = $ret->canStatic($fn, 'private');
+                $f->accept('method')->type('string');
+                $f->accept('url')->type('string');
+                $f->accept('params')->type('array');
+                $f->accept('int')->type('\Fruit\RouteKit\Interceptor');
+                $f->block($body);
                 $funcMap[$m][$id] = $fn;
             }
-
         }
 
-        $gen->addStaticVar('stateMap', $stateMap, 'private');
-        $gen->addStaticVar('varMap', $varMap, 'private');
-        $gen->addStaticVar('funcMap', $funcMap, 'private');
-        $gen->addPrivateProperty('interceptor', null);
+        $ret->hasStatic('stateMap', 'private')->bindDefault($stateMap);
+        $ret->hasStatic('varMap', 'private')->bindDefault($varMap);
+        $ret->hasStatic('funcMap', 'private')->bindDefault($funcMap);
+        $ret->has('interceptor', 'private');
 
         // make dispatcher
-        $func = array();
-        $func[] = 'list($f, $params) = \Fruit\RouteKit\Mux::findRoute(';
-        $func[] = '    $method, $uri,';
-        $func[] = '    self::$stateMap,';
-        $func[] = '    self::$varMap,';
-        $func[] = '    self::$funcMap';
-        $func[] = ');';
-        $func[] = '';
-        $func[] = 'if ($f === null) {';
-        $func[] = '    throw new \Exception(\'No route for \' . $uri);';
-        $func[] = '}';
-        $func[] = '';
-        $func[] = 'return self::$f($method, $uri, $params, $this->interceptor);';
-        $gen->addMethod('public', 'dispatch', array('string $method', 'string $uri'), $func);
+        $body = (new Block)
+            ->append(Value::stmt(
+                Value::as('list($f, $params) ='),
+                (new Call('\Fruit\RouteKit\Mux::findRoute'))
+                    ->rawArg('$method')
+                    ->rawArg('$uri')
+                    ->rawArg('self::$stateMap')
+                    ->rawArg('self::$varMap')
+                    ->rawArg('self::$funcMap')
+            ))
+            ->space()
+            ->line('if ($f === null) {')
+            ->child(Value::as('throw new \Exception(\'No route for \' . $uri);'))
+            ->line('}')
+            ->space()
+            ->return(
+                (new Call('self::$f'))
+                ->rawArg('$method')
+                ->rawArg('$uri')
+                ->rawArg('$params')
+                ->rawArg('$this->interceptor')
+            );
+        $ret->can('dispatch', 'public')
+            ->rawArg('method', 'string')
+            ->rawArg('uri', 'string')
+            ->append($body);
 
         if ($this->interceptor !== null) {
-            $func = array('$this->interceptor = ' . var_export($this->interceptor, true) . ';');
-            $gen->addMethod('public', '__construct', array(), $func);
+            $ret->can('__construct')->append(
+                (new Block)
+                ->append(Value::stmt(
+                    Value::as('$this->interceptor ='),
+                    Value::of($this->interceptor)
+                ))
+            );
         }
 
-        $gen->addMethod(
-            'public',
-            'getInterceptor',
-            array(),
-            array('return $this->interceptor;')
+        $ret->can('getInterceptor')->append(
+            (new Block)->return(Value::as('$this->interceptor'))
         );
 
-        return $gen;
+        return $ret;
     }
 
     /**
      * Generate static router, convert every dynamic call to handler/controller to static call.
      *
-     * This method will generate the defination of a customed class, which implements
-     * Fruit\RouteKit\Router, so you can create an instance and use the dispatch() method.
+     * This method will generate an anonymous class which implements Fruit\RouteKit\Router.
      *
-     * @param $clsName string custom class name, default to 'FruitRouteKitGeneratedMux'.
-     * @param $indent string how you indent generated class.
+     *     file_put_content(
+     *         'compiled_mux.php',
+     *         (new \Fruit\compileKit\Block)
+     *             ->return($mux->compile())
+     *             ->asFile()
+     *             ->render()
+     *     );
      */
-    public function compile(string $clsName = '', string $indent = '    '): string
+    public function compile(): Renderable
     {
-        $gen = $this->doCompile($clsName, $indent);
-        return "<?php\n" . $gen->render() . "return new $clsName;\n";
+        return $this->doCompile();
     }
 
     public static function findRoute(string $method, string $uri, array $smap, array $vmap, array $fmap): array
