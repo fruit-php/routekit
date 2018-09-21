@@ -4,7 +4,7 @@ namespace FruitTest\RouteKit;
 
 use Fruit\RouteKit\Mux;
 
-class CompiledTest extends \PHPUnit_Framework_TestCase
+class CompiledTest extends \PHPUnit\Framework\TestCase
 {
     private $mux;
 

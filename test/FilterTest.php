@@ -4,7 +4,7 @@ namespace FruitTest\RouteKit;
 
 use Fruit\RouteKit\Mux;
 
-class FilterTest extends \PHPUnit_Framework_TestCase
+class FilterTest extends \PHPUnit\Framework\TestCase
 {
     private $cls = 'FruitTest\RouteKit\Filter';
     private function M($i, $o)

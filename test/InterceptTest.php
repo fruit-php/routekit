@@ -4,7 +4,7 @@ namespace FruitTest\RouteKit;
 
 use Fruit\RouteKit\Mux;
 
-class InterceptTest extends \PHPUnit_Framework_TestCase
+class InterceptTest extends \PHPUnit\Framework\TestCase
 {
     private function M()
     {
