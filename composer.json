@@ -21,7 +21,7 @@
   "require": {
     "php": "^7",
     "alom/graphviz": "~1",
-    "fruit/compilekit": "*"
+    "fruit/compilekit": ">=0.2"
   },
   "suggest": {
   },
