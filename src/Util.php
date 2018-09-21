@@ -5,6 +5,8 @@ namespace Fruit\RouteKit;
 use ReflectionClass;
 use ReflectionFunction;
 use Exception;
+use Fruit\CompileKit\FunctionCall as Call;
+use Fruit\CompileKit\Renderable;
 
 class Util
 {
@@ -29,7 +31,8 @@ class Util
         $f = $c->getMethod($cb[1]);
         return [$f, $c];
     }
-    public static function compileCallable($cb, array $params = [])
+
+    public static function compileCallable($cb, array $params = []): Renderable
     {
         $res = self::reflectionCallable($cb);
         if (count($res) === 1) {
@@ -38,18 +41,28 @@ class Util
             if ($f->isClosure()) {
                 throw new Exception('Cannot compile closure');
             }
-            return sprintf('%s(%s)', $f->getName(), implode(',', $params));
+            $ret = new Call($f->getName());
+            foreach ($params as $p) {
+                $ret->rawArg($p);
+            }
+            return $ret;
         }
 
         list($f, $ref) = $res;
-        $tmpl = '%s::%s(%s)';
+        $tmpl = '%s::%s';
         $c = "\\" . $ref->getName();
 
         if (is_object($cb[0]) and !$f->isStatic()) {
             $c = "\\" . var_export($cb[0], true);
-            $tmpl = '(%s)->%s(%s)';
+            $tmpl = '(%s)->%s';
         }
 
-        return sprintf($tmpl, $c, $f->getName(), implode(',', $params));
+        $fn = sprintf($tmpl, $c, $f->getName());
+        $f = new Call($fn);
+        foreach ($params as $p) {
+            $f->rawArg($p);
+        }
+
+        return $f;
     }
 }

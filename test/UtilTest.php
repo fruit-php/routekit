@@ -4,7 +4,7 @@ namespace FruitTest\RouteKit;
 
 use Fruit\RouteKit\Util;
 
-class UtilTest extends \PHPUnit_Framework_TestCase
+class UtilTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @expectedException Exception
@@ -63,11 +63,21 @@ class UtilTest extends \PHPUnit_Framework_TestCase
      */
     public function testCompileCallable($cb, $expect, $msg)
     {
-        $this->assertEquals($expect.'()', Util::compileCallable($cb), $msg);
-        $this->assertEquals($expect.'($a)', Util::compileCallable($cb, ['$a']), $msg);
+        $this->assertEquals(
+            $expect.'()',
+            Util::compileCallable($cb)->render(),
+            $msg
+        );
+
+        $this->assertEquals(
+            $expect.'($a)',
+            Util::compileCallable($cb, ['$a'])->render(),
+            $msg
+        );
+
         $this->assertEquals(
             $expect.'($a,$b)',
-            Util::compileCallable($cb, ['$a', '$b']),
+            Util::compileCallable($cb, ['$a', '$b'])->render(),
             $msg
         );
     }
