@@ -40,7 +40,7 @@ $mux->get('/', array(new FOO, 'BAR'));
 $mux->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['PATH_INFO']);
 
 // generate class
-file_put_content('router.php', $mux->compile('MyRouter'));
+file_put_content('router.php', $mux->compileFile());
 
 // use generated router class
 $mux = require('router.php');
@@ -49,7 +49,7 @@ $mux->dispatch('GET', '/foo'); // (new MyClass('args', 'of', 'constructor'))->my
 
 // use injector to do DI tasks
 function di($url, $obj, $method) {
-	$obj->setDB($db);
+    $obj->setDB($db);
 }
 $mux->setInjector('di');
 $mux->get('/', array(new FOO, 'BAR'));
@@ -58,9 +58,9 @@ $mux->dispatch('GET', '/'); // $obj = new FOO; di('/', $obj, 'BAR'); $obj->BAR()
 // auth middleware, implements by input filter
 function checkAuth($method, $url, $cb, $params) {
     if (!authed()) {
-		header('Location: /login');
-		return 'login first';
-	}
+        header('Location: /login');
+        return 'login first';
+    }
 }
 $mux->setFilters(['checkAuth'], []);
 $mux->get('/', array(new FOO, 'BAR'));
@@ -69,8 +69,8 @@ $mux->dispatch('GET', '/'); // redirect to /login if not logged in
 // CORS middleware, implements by output filter
 function addCORS($result) {
     // few lines of code adding CORS headers here
-	
-	return $result;
+
+    return $result;
 }
 $mux->setFilters([], ['addCORS']);
 $mux->get('/', array(new FOO, 'BAR'));
@@ -78,12 +78,12 @@ $mux->dispatch('GET', '/'); // client will receive CORS header!
 
 // Templating middleware
 function handler() {
-	// real codes
-	
-	return ['view' => 'index.tmpl', 'data' => $result];
+    // real codes
+
+    return ['view' => 'index.tmpl', 'data' => $result];
 }
 function forgeView($result) {
-	return Template::load($result['view'])->render($result['data']);
+    return Template::load($result['view'])->render($result['data']);
 }
 $mux->setFilters([], ['addCORS']);
 $mux->get('/', 'handler');
@@ -98,13 +98,13 @@ RouteKit gains performance in two ways: better data structure for rule-matching,
 
 RouteKit store routing rules in tree structure, so the matching speed will not be affected by how many rules you have. In other words, the matching process has constant time complexity.
 
-More further, in generated custom router class, we use a Finite State Machine to do the matching process, eliminates all possible function calls. Function calls are much slower comparing to opcode actions (`if`, `switch`, assignments, arithmatic operations, etc.) and hashtable manuplating. In practice, the FSM approach can run more than 20x faster comparing to array implementations.
+More further, in generated router, we use a Finite State Machine to do the matching process, eliminates all possible function calls. Function calls are much slower comparing to opcode actions (`if`, `switch`, assignments, arithmatic operations, etc.) and hashtable manuplating. In practice, the FSM approach can run more than 20x faster comparing to array implementations.
 
 ### Static call
 
 Most of router implementations splits the dispatching work into two pieces: matching with rules to grab correct handler, and execute it with cufa; And cufa is notorious for its **great** performance.
 
-By generating custom router class, we generate codes according to the information you provided in routing rules. No more cufa, no more reflection, so no more performance penalty.
+By generating custom router, we generate codes according to the information you provided in routing rules. No more cufa, no more reflection, so no more performance penalty.
 
 Since codes are mostly generated using `var_export`, some cases are not supported:
 
@@ -114,26 +114,6 @@ Since codes are mostly generated using `var_export`, some cases are not supporte
 - Special variables like resources.
 
 Generated class should be thread-safe, since all properties and methods are static.
-
-## Diagram
-
-RouteKit can generate diagram to describe how we match the rules:
-
-```php
-$mux = new Fruit\RouteKit\Mux;
-
-// add rules here
-$mux->get('/', 'my_handler');
-
-$diagrams = $mux->dot();
-file_put_contents('get.gv', $diagrams['get']);
-```
-
-then
-
-```sh
-dot -Tsvg get.gv > get.svg
-```
 
 ## Type converting
 
