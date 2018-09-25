@@ -11,6 +11,7 @@ use Fruit\CompileKit\Block;
 use Fruit\CompileKit\Value;
 use Fruit\CompileKit\Renderable;
 use Fruit\CompileKit\FunctionCall as Call;
+use Fruit\CompileKit\UserArray as Arr;
 
 // This class is only for internal use.
 class Node
@@ -127,6 +128,24 @@ class Node
 
         list($h, $args) = $this->handler;
 
+        // codes to call controller
+        $exec = (new Block)->append(Value::assign(
+            Value::as('$ret'),
+            Util::compileCallable($h, $params)
+        ));
+
+        // codes to generate object
+        $obj = new Block;
+
+        // codes to call interceptor
+        $intercept = new Block;
+
+        $method = $h;
+
+        // codes to return results
+        $post = (new Block)->return(Value::as('$ret'));
+
+        // update obj/exec to fit for object based controller
         if (is_array($h)) {
             $paramFiller = function (Call $c): Call {
                 return $c;
@@ -164,47 +183,6 @@ class Node
                 $paramFiller(new Call('$obj->' . $method))
             ));
 
-            $intercept = new Block;
-            if ($int !== null) {
-                $intercept->append(
-                    Value::stmt(
-                        (new Call('$int->intercept'))
-                            ->rawArg('$url')
-                            ->rawArg('$obj')
-                            ->arg($method)
-                    )
-                );
-            }
-
-            $input = new Block;
-            foreach ($this->inputFilters as $f) {
-                $input->append(
-                    Value::stmt(
-                        Value::as('$ret ='),
-                        Util::compileCallable(
-                            $f,
-                            [
-                                '$method',
-                                '$url',
-                                '[$obj,'.Value::of($method)->render().']',
-                                '$params'
-                            ]
-                        )
-                    )
-                )
-                    ->line('if ($ret !== null) {')
-                    ->child((new Block)->return(Value::as('$ret;')))
-                    ->line('}');
-            }
-            $output = new Block;
-            foreach ($this->outputFilters as $f) {
-                $output->append(Value::stmt(
-                    Value::as('$ret ='),
-                    Util::compileCallable($f, array('$ret'))
-                ));
-            }
-            $post = (new Block)->return(Value::as('$ret'));
-
             $obj = new Block;
             if (is_object($h[0])) {
                 $obj->append(Value::assign(
@@ -218,18 +196,62 @@ class Node
                 ));
             }
 
-            return $ret->append(
-                $obj,
-                $input,
-                $intercept,
-                $exec,
-                $output,
-                $post
-            );
+            if ($int !== null) {
+                $intercept->append(
+                    Value::stmt(
+                        (new Call('$int->intercept'))
+                        ->rawArg('$url')
+                        ->rawArg('$obj')
+                        ->arg($method)
+                    )
+                );
+            }
         }
 
-        return (new Block)->return(
-            Util::compileCallable($h, $params)
+        // codes to call input/outpu filters
+        $input = new Block;
+        if (is_array($h)) {
+            $cb = (new Arr([
+                Value::as('$obj'),
+                Value::of($method)
+            ]))->render();
+        } else {
+            $cb = Value::of($h)->render();
+        }
+        foreach ($this->inputFilters as $f) {
+            $input->append(
+                Value::assign(
+                    Value::as('$ret'),
+                    Util::compileCallable(
+                        $f,
+                        [
+                            '$method',
+                            '$url',
+                            $cb,
+                            '$params'
+                        ]
+                    )
+                )
+            )
+                ->line('if ($ret !== null) {')
+                ->child((new Block)->return(Value::as('$ret;')))
+                ->line('}');
+        }
+        $output = new Block;
+        foreach ($this->outputFilters as $f) {
+            $output->append(Value::assign(
+                Value::as('$ret'),
+                Util::compileCallable($f, array('$ret'))
+            ));
+        }
+
+        return $ret->append(
+            $obj,
+            $input,
+            $intercept,
+            $exec,
+            $output,
+            $post
         );
     }
 
