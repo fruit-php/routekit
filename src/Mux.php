@@ -243,7 +243,7 @@ class Mux implements Router, Compilable
 
         // make dispatcher
         $body = (new Block)
-            ->append(Value::stmt(
+            ->stmt(
                 Value::as('list($f, $params) ='),
                 (new Call('\Fruit\RouteKit\Mux::findRoute'))
                     ->rawArg('$method')
@@ -251,7 +251,7 @@ class Mux implements Router, Compilable
                     ->rawArg('self::$stateMap')
                     ->rawArg('self::$varMap')
                     ->rawArg('self::$funcMap')
-            ))
+            )
             ->space()
             ->line('if ($f === null) {')
             ->child(Value::as('throw new \Exception(\'No route for \' . $uri);'))
@@ -272,10 +272,10 @@ class Mux implements Router, Compilable
         if ($this->interceptor !== null) {
             $ret->can('__construct')->append(
                 (new Block)
-                ->append(Value::stmt(
+                ->stmt(
                     Value::as('$this->interceptor ='),
                     Value::of($this->interceptor)
-                ))
+                )
             );
         }
 

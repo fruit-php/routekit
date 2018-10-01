@@ -20,7 +20,7 @@
   },
   "require": {
     "php": "^7",
-    "fruit/compilekit": ">=0.2.10"
+    "fruit/compilekit": ">=0.2.12"
   },
   "suggest": {
   },

@@ -129,10 +129,10 @@ class Node
         list($h, $args) = $this->handler;
 
         // codes to call controller
-        $exec = (new Block)->append(Value::assign(
+        $exec = (new Block)->assign(
             Value::as('$ret'),
             Util::compileCallable($h, $params)
-        ));
+        );
 
         // codes to generate object
         $obj = new Block;
@@ -178,32 +178,30 @@ class Node
 
             $method = $h[1];
 
-            $exec = (new Block)->append(Value::assign(
+            $exec = (new Block)->assign(
                 Value::as('$ret'),
                 $paramFiller(new Call('$obj->' . $method))
-            ));
+            );
 
             $obj = new Block;
             if (is_object($h[0])) {
-                $obj->append(Value::assign(
+                $obj->assign(
                     Value::as('$obj'),
                     Value::of($h[0])
-                ));
+                );
             } else {
-                $obj->append(Value::assign(
+                $obj->assign(
                     Value::as('$obj'),
                     $argFiller((new Call('new ' . $h[0])))
-                ));
+                );
             }
 
             if ($int !== null) {
-                $intercept->append(
-                    Value::stmt(
-                        (new Call('$int->intercept'))
-                        ->rawArg('$url')
-                        ->rawArg('$obj')
-                        ->arg($method)
-                    )
+                $intercept->stmt(
+                    (new Call('$int->intercept'))
+                    ->rawArg('$url')
+                    ->rawArg('$obj')
+                    ->arg($method)
                 );
             }
         }
@@ -219,18 +217,16 @@ class Node
             $cb = Value::of($h)->render();
         }
         foreach ($this->inputFilters as $f) {
-            $input->append(
-                Value::assign(
-                    Value::as('$ret'),
-                    Util::compileCallable(
-                        $f,
-                        [
-                            '$method',
-                            '$url',
-                            $cb,
-                            '$params'
-                        ]
-                    )
+            $input->assign(
+                Value::as('$ret'),
+                Util::compileCallable(
+                    $f,
+                    [
+                        '$method',
+                        '$url',
+                        $cb,
+                        '$params'
+                    ]
                 )
             )
                 ->line('if ($ret !== null) {')
@@ -239,10 +235,10 @@ class Node
         }
         $output = new Block;
         foreach ($this->outputFilters as $f) {
-            $output->append(Value::assign(
+            $output->assign(
                 Value::as('$ret'),
                 Util::compileCallable($f, array('$ret'))
-            ));
+            );
         }
 
         return $ret->append(
