@@ -20,7 +20,7 @@ class Type
     {
         static $shouldConvertType = null;
         if ($shouldConvertType === null) {
-            $v = phpversion() + 0.0;
+            $v = explode('.', phpversion())[0] + 0.0;
             // only php7+ have primitive type hinting
             $shouldConvertType = $v >= 7;
         }
